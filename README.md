@@ -27,5 +27,7 @@ It adds a sleek toggle button and a semester selection modal, making it easy to 
    chrome://extensions/
 
 3. Enable Developer mode (top-right corner).
+
 4. Click Load unpacked and select the project folder.
+
 5. The extension should now be active in your browser.

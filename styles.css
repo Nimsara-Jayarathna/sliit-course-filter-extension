@@ -1,0 +1,149 @@
+:root {
+  --primary-color: #2e7d32;
+  --primary-color-light: #28a745cc;
+  --primary-color-shadow: #2e7d32aa;
+  --border-radius-large: 22px;
+  --border-radius-small: 8px;
+  --text-color: #333;
+  --border-color: #bbb;
+}
+
+/* --- Toggle Button --- */
+.semester-toggle-btn {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  margin-top: 2px;
+  transition: transform 0.2s ease;
+}
+
+.semester-toggle-btn:hover {
+  transform: scale(1.1);
+}
+
+.semester-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none; /* Clicks go to the button */
+}
+
+.semester-toggle-btn .toggle-off {
+  stroke: #888;
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.3s ease;
+}
+
+.semester-toggle-btn .toggle-on {
+  fill: none;
+  stroke: var(--primary-color);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.semester-toggle-btn.active .toggle-off {
+  stroke: var(--primary-color);
+}
+
+.semester-toggle-btn.active .toggle-on {
+  opacity: 1;
+}
+
+
+/* --- Modal and Buttons --- */
+.myCoursesFilterModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.myCoursesFilterModal.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.myCoursesFilterContent {
+  background: #fff;
+  padding: 24px 28px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  min-width: 320px;
+  max-width: 90%;
+  text-align: center;
+  user-select: none;
+}
+
+.semester-btn {
+  padding: 8px 18px;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--border-radius-large);
+  background: #fafafa;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-color);
+  box-shadow: 1px 1px 6px rgba(0,0,0,0.07);
+  transition: all 0.3s;
+}
+
+.semester-btn:hover {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 8px var(--primary-color-shadow);
+}
+
+.semester-btn:focus {
+  outline: none;
+  box-shadow: 0 0 8px var(--primary-color-light);
+}
+
+#cancelBtn {
+  background: none;
+  border: 1.5px solid #aaa;
+  color: #555;
+  padding: 6px 14px;
+  font-weight: 600;
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 16px;
+  user-select: none;
+}
+
+#cancelBtn:hover {
+  background-color: #eee;
+  color: #222;
+  border-color: #666;
+}
+
+/* --- Course List Filtering --- */
+li.dropdown > a[title="My courses"] + ul > li {
+  transition: opacity 0.3s ease, visibility 0.3s ease, height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+}
+
+li.dropdown > a[title="My courses"] + ul > li.hidden-course {
+  opacity: 0;
+  visibility: hidden;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
