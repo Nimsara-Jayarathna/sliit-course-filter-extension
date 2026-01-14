@@ -295,9 +295,9 @@
     navItem.id = 'scf-navbar-item';
 
     // Create Link
-    const navLink = createElement('a', ['nav-link', 'scf-nav-link'], 'Semester');
+    const navLink = createElement('a', ['nav-link', 'scf-nav-link'], 'Courses');
     navLink.href = '#';
-    navLink.innerHTML = `<span class="scf-icon">📚</span> Semester`;
+    // navLink.innerHTML = `<span class="scf-icon">📚</span> Semester`; // Removed icon as requested
     navItem.appendChild(navLink);
 
     // Wrapper
