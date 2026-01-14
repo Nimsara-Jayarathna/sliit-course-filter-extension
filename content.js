@@ -173,11 +173,19 @@
 
     // Footer
     const footer = createElement('div', ['scf-dropdown-footer']);
+
+    // "Go to My Courses" Link
+    const myCoursesLink = createElement('a', ['scf-my-courses-link'], 'Go to My Courses');
+    myCoursesLink.href = '/my/courses.php';
+
+    // Refresh Button
     const refreshBtn = createElement('button', ['scf-refresh-btn'], '↻ Rescan Courses');
     refreshBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       onRescan();
     });
+
+    footer.appendChild(myCoursesLink);
     footer.appendChild(refreshBtn);
     dropdown.appendChild(footer);
 
@@ -279,6 +287,26 @@
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
+
+  // Initial run
   injectNavbarItem();
+
+  // Hide original "My courses" link
+  // We run this periodically or just once? Moodle might re-render. 
+  // Let's add it to the observer or a specific interval check if simple css isn't enough.
+  // Ideally, we'd use CSS, but we need to target a specific list item based on text content often.
+  const hideOriginalMyCourses = () => {
+    const navItems = document.querySelectorAll('.nav-item, .more-nav > li');
+    navItems.forEach(item => {
+      if (item.innerText.trim() === 'My courses' || item.querySelector('a[title="My courses"]')) {
+        item.style.display = 'none';
+      }
+    });
+  };
+
+  // Run immediately and also observe
+  hideOriginalMyCourses();
+  const hideObserver = new MutationObserver(hideOriginalMyCourses);
+  hideObserver.observe(document.body, { childList: true, subtree: true });
 
 })();

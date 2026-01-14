@@ -132,6 +132,19 @@
   text-decoration: underline;
 }
 
+.scf-my-courses-link {
+  font-size: 13px;
+  color: #0f6cbf;
+  text-decoration: none;
+  font-weight: 500;
+  margin-right: 15px;
+  /* Space between link and refresh button */
+}
+
+.scf-my-courses-link:hover {
+  text-decoration: underline;
+}
+
 /* Loading State */
 .scf-dropdown-wrapper.loading .scf-dropdown {
   opacity: 0.6;
