@@ -309,4 +309,33 @@
   const hideObserver = new MutationObserver(hideOriginalMyCourses);
   hideObserver.observe(document.body, { childList: true, subtree: true });
 
+  // Auto-close Right Drawer (Profile/Block Drawer)
+  const closeRightDrawer = () => {
+    // Moodle 4.x: Drawer is usually .drawer-right or similar.
+    // If it has 'show' class, it's open.
+    // We look for the close button inside it OR the toggle button.
+
+    const drawer = document.querySelector('.drawer-right, [data-region="right-hand-drawer"]');
+    if (drawer && drawer.classList.contains('show')) {
+      // Try to find the specific close button within the drawer
+      const closeBtn = drawer.querySelector('[data-action="closedrawer"]');
+      if (closeBtn) {
+        closeBtn.click();
+        return;
+      }
+
+      // Fallback: Try the main toggle button if drawer is open
+      // The toggle usually has aria-expanded="true"
+      const toggleBtn = document.querySelector('button[data-action="toggle-drawer"][data-side="right"]');
+      if (toggleBtn && toggleBtn.getAttribute('aria-expanded') === 'true') {
+        toggleBtn.click();
+      }
+    }
+  };
+
+  // Check a few times in case of lazy loading
+  setTimeout(closeRightDrawer, 500);
+  setTimeout(closeRightDrawer, 1500);
+  setTimeout(closeRightDrawer, 3000);
+
 })();
