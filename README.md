@@ -30,16 +30,28 @@ Recently, **SLIIT CourseWeb underwent a major UI overhaul**, which changed the u
 
 ## 📦 Installation
 
+### Choose Your Version
+
+You can choose between two versions of the extension depending on your preference:
+
+#### Option 1: Enhanced UI & Clean Experience (Recommended)
+Offers a more fluid, smooth UI for the menu and a cleaner LMS page interface.
+```bash
+git clone -b feature/moodle-new-workflow https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
+
+#### Option 2: Standard Version
+The normal version of the extension.
+```bash
+git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
+
 ### Load as Unpacked Extension
-1.  Clone or download this repository:
-    ```bash
-    git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
-    ```
-2.  Open Chrome and navigate to:
+1.  Open Chrome and navigate to:
     `chrome://extensions/`
-3.  Enable **Developer mode** (top-right corner).
-4.  Click **Load unpacked** and select the project folder.
-5.  Refesh SLIIT CourseWeb to see the changes!
+2.  Enable **Developer mode** (top-right corner).
+3.  Click **Load unpacked** and select the project folder (the one you just cloned).
+4.  Refesh SLIIT CourseWeb to see the changes!
 
 ---
 
@@ -48,5 +60,10 @@ Recently, **SLIIT CourseWeb underwent a major UI overhaul**, which changed the u
 If you prefer the old behavior (which simply filtered the existing list without API calls), you can access the legacy version here:
 
 [**View Legacy Version (v1.0)**](https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension/commits/v1.0)
+
+To use this version, clone the `v1.0` tag:
+```bash
+git clone -b v1.0 https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
 
 *Note: The legacy version does not support fetching courses not already visible on the page.*
