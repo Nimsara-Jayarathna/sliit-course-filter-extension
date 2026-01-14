@@ -115,7 +115,9 @@
   padding: 8px 16px;
   border-top: 1px solid #eee;
   background: #fff;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .scf-refresh-btn {
@@ -137,8 +139,6 @@
   color: #0f6cbf;
   text-decoration: none;
   font-weight: 500;
-  margin-right: 15px;
-  /* Space between link and refresh button */
 }
 
 .scf-my-courses-link:hover {
