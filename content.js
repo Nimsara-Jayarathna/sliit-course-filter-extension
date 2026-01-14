@@ -118,7 +118,8 @@
   // --- UI Components ---
   const createCourseList = (courses, targetCategory) => {
     const list = createElement('div', ['scf-course-list']);
-    const filtered = courses.filter(c => c.category === targetCategory || targetCategory === 'All'); // Exact match preferred
+
+    const filtered = courses.filter(c => c.category === targetCategory || targetCategory === 'All');
 
     if (filtered.length === 0) {
       list.innerHTML = `<div class="scf-empty">No courses found for ${targetCategory}</div>`;
@@ -126,8 +127,13 @@
     }
 
     filtered.forEach(c => {
-      const item = createElement('a', ['scf-course-link'], c.title);
+      // Strip [Semester Info] from display string
+      // Handles both prefix: "[2024 JAN] Name" AND suffix: "Name [2025/FEB]"
+      const cleanTitle = c.title.replace(/\s*\[.*?\]/g, '').trim();
+
+      const item = createElement('a', ['scf-course-link'], cleanTitle);
       item.href = c.href;
+      item.title = c.title; // Full title on hover
       list.appendChild(item);
     });
     return list;
