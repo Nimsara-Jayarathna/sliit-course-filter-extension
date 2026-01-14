@@ -144,6 +144,8 @@
 
     // Header
     const header = createElement('div', ['scf-dropdown-header']);
+
+    const headerRow = createElement('div', ['scf-header-row']);
     const semesters = [...new Set(courses.map(c => c.category))].sort().reverse();
 
     if (!semesters.includes(currentSem) && semesters.length > 0) {
@@ -151,19 +153,64 @@
       onSemesterChange(currentSem); // Auto-correct
     }
 
-    const select = createElement('select', ['scf-semester-select']);
+    // --- Custom Select Implementation ---
+    const selectContainer = createElement('div', ['scf-custom-select']);
+    const selectTrigger = createElement('div', ['scf-select-trigger']);
+    selectTrigger.innerHTML = `<span>${currentSem || 'Select Semester'}</span><div class="scf-arrow"></div>`;
+
+    const selectOptions = createElement('div', ['scf-select-options']);
+
     semesters.forEach(s => {
-      const opt = createElement('option', [], s);
-      opt.value = s;
-      opt.selected = s === currentSem;
-      select.appendChild(opt);
+      const option = createElement('div', ['scf-select-option'], s);
+      if (s === currentSem) option.classList.add('selected');
+
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Update UI
+        selectTrigger.querySelector('span').textContent = s;
+        selectOptions.querySelectorAll('.scf-select-option').forEach(el => el.classList.remove('selected'));
+        option.classList.add('selected');
+        selectOptions.classList.remove('open');
+        selectTrigger.classList.remove('active');
+
+        // Callback
+        onSemesterChange(s);
+      });
+      selectOptions.appendChild(option);
     });
 
-    select.addEventListener('change', (e) => onSemesterChange(e.target.value));
-    select.addEventListener('click', (e) => e.stopPropagation());
+    // Toggle logic
+    selectTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = selectOptions.classList.contains('open');
+      // Close others if any (not strictly needed here as we only have one, but good practice)
+      document.querySelectorAll('.scf-select-options').forEach(el => el.classList.remove('open'));
 
-    header.appendChild(createElement('span', ['scf-label'], 'Semester: '));
-    header.appendChild(select);
+      if (!isOpen) {
+        selectOptions.classList.add('open');
+        selectTrigger.classList.add('active');
+      } else {
+        selectOptions.classList.remove('open');
+        selectTrigger.classList.remove('active');
+      }
+    });
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+      if (!selectContainer.contains(e.target)) {
+        selectOptions.classList.remove('open');
+        selectTrigger.classList.remove('active');
+      }
+    });
+
+    selectContainer.appendChild(selectTrigger);
+    selectContainer.appendChild(selectOptions);
+    // ------------------------------------
+
+    headerRow.appendChild(createElement('span', ['scf-label'], 'Semester: '));
+    headerRow.appendChild(selectContainer); // Append custom select instead of native
+    header.appendChild(headerRow);
+
     dropdown.appendChild(header);
 
     // Body
