@@ -3,175 +3,310 @@
 
   // --- Constants ---
   const STORAGE_KEYS = {
-    ENABLED: 'myCoursesFilterEnabled',
-    SEMESTER: 'myCoursesFilterSemester',
-  };
-  const MY_COURSES_LINK_SELECTOR = 'li.dropdown > a[title="My courses"]';
-  const SEMESTER_REGEX = /(\d{4}\/\w+)/;
-
-  // --- State ---
-  let toggleBtn = null;
-
-  // --- DOM Utilities ---
-  const getMyCoursesList = () => document.querySelector(MY_COURSES_LINK_SELECTOR)?.nextElementSibling;
-  const getAvailableSemesters = () => {
-    const myCoursesList = getMyCoursesList();
-    if (!myCoursesList) return [];
-    const semesters = new Set();
-    myCoursesList.querySelectorAll('li > a[title]').forEach(a => {
-      const match = a.title.match(SEMESTER_REGEX);
-      if (match && match[1]) semesters.add(match[1]);
-    });
-    return Array.from(semesters).sort().reverse();
+    COURSES_CACHE: 'myCoursesCache',
+    LAST_FETCH: 'myCoursesLastFetch',
+    SELECTED_SEMESTER: 'myCoursesSelectedSemester'
   };
 
-  // --- UI Update Functions ---
-  const updateButton = (enabled, semester = null) => {
-    if (!toggleBtn) return;
-    toggleBtn.dataset.enabled = enabled.toString();
-    if (enabled && semester) {
-      toggleBtn.classList.add('active');
-      toggleBtn.title = `Filter active for ${semester}. Click to clear.`;
-    } else {
-      toggleBtn.classList.remove('active');
-      toggleBtn.title = 'Toggle semester filter for My Courses';
+  const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
+
+  // API Config
+  const API_ENDPOINT = '/lib/ajax/service.php';
+  const API_METHOD = 'core_course_get_enrolled_courses_by_timeline_classification';
+
+  // --- Helpers ---
+  const createElement = (tag, classes = [], html = '') => {
+    const el = document.createElement(tag);
+    if (classes.length) el.classList.add(...classes);
+    if (html) el.innerHTML = html;
+    return el;
+  };
+
+  const getSesskey = () => {
+    // Try to find sesskey in logout link
+    const link = document.querySelector('a[href*="sesskey="]');
+    if (link) {
+      const match = link.href.match(/sesskey=([^&]+)/);
+      return match ? match[1] : null;
     }
+    return null;
   };
 
-  const filterCourses = (semester) => {
-    const myCoursesList = getMyCoursesList();
-    if (!myCoursesList) return;
-    myCoursesList.querySelectorAll('li > a[title]').forEach(a => {
-      const li = a.parentElement;
-      const match = a.title.match(SEMESTER_REGEX);
-      li.classList.toggle('hidden-course', !(match && match[1] === semester));
-    });
-  };
+  // --- Data Fetching (API) ---
+  const fetchCoursesFromAPI = async () => {
+    const sesskey = getSesskey();
+    if (!sesskey) {
+      console.warn('SLIIT Filter: Sesskey not found. Cannot fetch courses via API.');
+      return [];
+    }
 
-  const resetFilter = () => {
-    const myCoursesList = getMyCoursesList();
-    if (!myCoursesList) return;
-    myCoursesList.querySelectorAll('li.hidden-course').forEach(li => {
-      li.classList.remove('hidden-course');
-    });
-  };
+    const payload = [{
+      index: 0,
+      methodname: API_METHOD,
+      args: {
+        offset: 0,
+        limit: 0, // 0 = All
+        classification: 'all', // Get Everything (Past, Future, In Progress)
+        sort: 'fullname'
+      }
+    }];
 
-  // --- Modal Logic with UX improvements ---
-  const createModal = (semesters, onSelect) => {
-    const modal = document.createElement('div');
-    modal.className = 'myCoursesFilterModal';
-    modal.innerHTML = `
-      <div class="myCoursesFilterContent">
-        <h3 style="margin-bottom: 20px; font-weight: 700; color: #222;">Select Semester</h3>
-        <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
-          ${semesters.map(s => `<button class="semester-btn" data-semester="${s}">${s}</button>`).join('')}
-        </div>
-        <button id="cancelBtn" title="Cancel filtering">Cancel</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
+    const url = `${API_ENDPOINT}?sesskey=${sesskey}&info=${API_METHOD}`;
 
-    const closeModal = () => {
-      modal.classList.remove('visible');
-      document.removeEventListener('keydown', handleEsc);
-      setTimeout(() => modal.remove(), 300);
-    };
-
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') closeModal();
-    };
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal(); // Click on background
-    });
-    modal.querySelector('#cancelBtn').addEventListener('click', closeModal);
-    modal.querySelectorAll('.semester-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        onSelect(btn.dataset.semester);
-        closeModal();
-      });
-    });
-
-    document.addEventListener('keydown', handleEsc);
-    requestAnimationFrame(() => modal.classList.add('visible'));
-  };
-  
-  // --- Core Logic ---
-  const handleToggleClick = async () => {
-    const { [STORAGE_KEYS.ENABLED]: isEnabled } = await chrome.storage.sync.get(STORAGE_KEYS.ENABLED);
-
-    if (isEnabled) {
-      await chrome.storage.sync.set({ [STORAGE_KEYS.ENABLED]: false });
-      await chrome.storage.sync.remove(STORAGE_KEYS.SEMESTER);
-      resetFilter();
-      updateButton(false);
-    } else {
-      const availableSemesters = getAvailableSemesters();
-      if (availableSemesters.length === 0) return;
-      createModal(availableSemesters, async (chosenSemester) => {
-        await chrome.storage.sync.set({
-          [STORAGE_KEYS.ENABLED]: true,
-          [STORAGE_KEYS.SEMESTER]: chosenSemester,
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-        filterCourses(chosenSemester);
-        updateButton(true, chosenSemester);
-      });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const json = await response.json();
+        if (json[0] && json[0].error) {
+          throw new Error(json[0].exception);
+        }
+
+        const rawCourses = json[0].data.courses;
+
+        // Transform to our format
+        const courses = rawCourses.map(c => ({
+          title: c.fullname,
+          href: c.viewurl,
+          // Course category is often just "Miscellaneous" or "2024 July".
+          // If it looks like a semester, use it. Otherwise fall back to parsing title.
+          category: c.coursecategory || parseSemesterFromTitle(c.fullname)
+        }));
+
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.COURSES_CACHE]: courses,
+          [STORAGE_KEYS.LAST_FETCH]: Date.now()
+        });
+
+        return courses;
+
+      } catch (err) {
+        console.warn(`SLIIT Filter: API Fetch attempt ${attempt} failed`, err);
+        if (attempt === 3) {
+          console.error('SLIIT Filter: All API Fetch attempts failed', err);
+          return [];
+        }
+        // Exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
     }
+    return [];
   };
 
-  const initialize = async () => {
-    const myCoursesLink = document.querySelector(MY_COURSES_LINK_SELECTOR);
-    if (!myCoursesLink || document.getElementById('myCoursesFilterToggleBtn')) {
-      return; // Already initialized or element not found
+  const parseSemesterFromTitle = (title) => {
+    const match = title.match(/\[(.*?)]/);
+    return match ? match[1] : 'Uncategorized';
+  };
+
+  const getCourses = async (forceRefresh = false) => {
+    const data = await chrome.storage.local.get([STORAGE_KEYS.COURSES_CACHE, STORAGE_KEYS.LAST_FETCH]);
+    const cache = data[STORAGE_KEYS.COURSES_CACHE];
+    const lastFetch = data[STORAGE_KEYS.LAST_FETCH];
+
+    if (!forceRefresh && cache && lastFetch && (Date.now() - lastFetch < CACHE_DURATION)) {
+      return cache;
+    }
+    return await fetchCoursesFromAPI();
+  };
+
+  // --- UI Components ---
+  const createCourseList = (courses, targetCategory) => {
+    const list = createElement('div', ['scf-course-list']);
+
+    const filtered = courses.filter(c => c.category === targetCategory || targetCategory === 'All');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="scf-empty">No courses found for ${targetCategory}</div>`;
+      return list;
     }
 
-    const availableSemesters = getAvailableSemesters();
-    if (availableSemesters.length === 0) {
-      console.warn('My Courses filter: No semesters found in course titles.');
-      return;
+    filtered.forEach(c => {
+      // Strip [Semester Info] from display string
+      // Handles both prefix: "[2024 JAN] Name" AND suffix: "Name [2025/FEB]"
+      const cleanTitle = c.title.replace(/\s*\[.*?\]/g, '').trim();
+
+      const item = createElement('a', ['scf-course-link'], cleanTitle);
+      item.href = c.href;
+      item.title = c.title; // Full title on hover
+      list.appendChild(item);
+    });
+    return list;
+  };
+
+  const createDropdown = (courses, currentSem, onSemesterChange, onRescan) => {
+    const dropdown = createElement('div', ['scf-dropdown']);
+
+    // Header
+    const header = createElement('div', ['scf-dropdown-header']);
+    const semesters = [...new Set(courses.map(c => c.category))].sort().reverse();
+
+    if (!semesters.includes(currentSem) && semesters.length > 0) {
+      currentSem = semesters[0];
+      onSemesterChange(currentSem); // Auto-correct
     }
 
-    // Create and inject button
-    toggleBtn = document.createElement('button');
-    toggleBtn.id = 'myCoursesFilterToggleBtn';
-    toggleBtn.className = 'semester-toggle-btn';
-    toggleBtn.innerHTML = `<svg viewBox="0 0 24 24"><circle class="toggle-off" cx="12" cy="12" r="9"/><path class="toggle-on" d="M7 12l4 4 6-8"/></svg>`;
-    
-    const btnLi = document.createElement('li');
-    btnLi.style.cssText = 'display: flex; align-items: center;';
-    btnLi.appendChild(toggleBtn);
-    myCoursesLink.parentElement.parentElement?.insertBefore(btnLi, myCoursesLink.parentElement.nextSibling);
+    const select = createElement('select', ['scf-semester-select']);
+    semesters.forEach(s => {
+      const opt = createElement('option', [], s);
+      opt.value = s;
+      opt.selected = s === currentSem;
+      select.appendChild(opt);
+    });
 
-    // Load initial state from storage
-    const stored = await chrome.storage.sync.get([STORAGE_KEYS.ENABLED, STORAGE_KEYS.SEMESTER]);
-    const isEnabled = stored[STORAGE_KEYS.ENABLED] === true;
-    const semester = stored[STORAGE_KEYS.SEMESTER];
+    select.addEventListener('change', (e) => onSemesterChange(e.target.value));
+    select.addEventListener('click', (e) => e.stopPropagation());
 
-    if (isEnabled && semester && availableSemesters.includes(semester)) {
-      filterCourses(semester);
-      updateButton(true, semester);
+    header.appendChild(createElement('span', ['scf-label'], 'Semester: '));
+    header.appendChild(select);
+    dropdown.appendChild(header);
+
+    // Body
+    const body = createElement('div', ['scf-dropdown-body']);
+    body.appendChild(createCourseList(courses, currentSem));
+    dropdown.appendChild(body);
+
+    // Footer
+    const footer = createElement('div', ['scf-dropdown-footer']);
+
+    // "Go to My Courses" Link
+    const myCoursesLink = createElement('a', ['scf-my-courses-link'], 'Go to My Courses');
+    myCoursesLink.href = '/my/courses.php';
+
+    // Refresh Button
+    const refreshBtn = createElement('button', ['scf-refresh-btn'], '↻ Rescan Courses');
+    refreshBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onRescan();
+    });
+
+    footer.appendChild(myCoursesLink);
+    footer.appendChild(refreshBtn);
+    dropdown.appendChild(footer);
+
+    return {
+      dom: dropdown, updateBody: (newSem) => {
+        body.innerHTML = '';
+        body.appendChild(createCourseList(courses, newSem));
+      }
+    };
+  };
+
+  const injectNavbarItem = async () => {
+    // 1. Check & Inject Placeholder SYNCHRONOUSLY
+    if (document.getElementById('scf-navbar-item')) return;
+
+    // Navbar Selectors (Updated for 4.x)
+    const navContainer = document.querySelector('nav .primary-navigation .more-nav') ||
+      document.querySelector('.primary-navigation') ||
+      document.querySelector('.navbar-nav');
+
+    if (!navContainer) return;
+
+    const navItem = createElement('li', ['nav-item', 'scf-nav-item']); // 'nav-item' is standard BS class
+    navItem.id = 'scf-navbar-item';
+
+    // Create Link
+    const navLink = createElement('a', ['nav-link', 'scf-nav-link'], 'Semester');
+    navLink.href = '#';
+    navLink.innerHTML = `<span class="scf-icon">📚</span> Semester`;
+    navItem.appendChild(navLink);
+
+    // Wrapper
+    const dropdownWrapper = createElement('div', ['scf-dropdown-wrapper']);
+    const loadingEl = createElement('div', ['scf-loading'], 'Loading...');
+    loadingEl.style.padding = '10px';
+    dropdownWrapper.appendChild(loadingEl);
+    navItem.appendChild(dropdownWrapper);
+
+    // Insert Logic: Try to be 2nd or 3rd item
+    if (navContainer.children.length > 2) {
+      navContainer.insertBefore(navItem, navContainer.children[2]);
     } else {
-      resetFilter();
-      updateButton(false);
+      navContainer.appendChild(navItem);
     }
 
-    toggleBtn.addEventListener('click', handleToggleClick);
-    console.log('My Courses filter: Initialization complete.');
+    // Interaction
+    let timer;
+    const show = () => {
+      clearTimeout(timer);
+      navItem.classList.add('show');
+    };
+    const hide = () => {
+      timer = setTimeout(() => navItem.classList.remove('show'), 300);
+    };
+
+    navItem.addEventListener('mouseenter', show);
+    navItem.addEventListener('mouseleave', hide);
+    navItem.addEventListener('click', (e) => {
+      if (!navItem.classList.contains('show')) show();
+    });
+
+    // 2. Async Data Fetch & Populate
+    try {
+      let courses = await getCourses();
+      let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
+      let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
+
+      const renderDropdown = () => {
+        dropdownWrapper.innerHTML = '';
+        const instance = createDropdown(
+          courses,
+          currentSem,
+          (newSem) => {
+            currentSem = newSem;
+            chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
+            instance.updateBody(newSem);
+          },
+          async () => {
+            dropdownWrapper.classList.add('loading');
+            courses = await getCourses(true);
+            dropdownWrapper.classList.remove('loading');
+            renderDropdown();
+          }
+        );
+        dropdownWrapper.appendChild(instance.dom);
+      };
+
+      renderDropdown();
+    } catch (err) {
+      console.error('SLIIT Filter: Failed to initialize navbar item', err);
+      dropdownWrapper.innerHTML = '<div style="padding:10px; color:red;">Failed to load</div>';
+    }
   };
 
-  // --- Use MutationObserver to wait for the element to appear ---
-  const observer = new MutationObserver((mutations, obs) => {
-    const myCoursesLink = document.querySelector(MY_COURSES_LINK_SELECTOR);
-    if (myCoursesLink) {
-      initialize();
-      obs.disconnect(); // Stop observing once we've initialized
+  // Observer
+  const observer = new MutationObserver(() => {
+    if (document.querySelector('nav') && !document.getElementById('scf-navbar-item')) {
+      injectNavbarItem();
     }
   });
+  observer.observe(document.body, { childList: true, subtree: true });
 
-  // Start observing the document body for changes
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+  // Initial run
+  injectNavbarItem();
+
+  // Hide original "My courses" link
+  // We run this periodically or just once? Moodle might re-render. 
+  // Let's add it to the observer or a specific interval check if simple css isn't enough.
+  // Ideally, we'd use CSS, but we need to target a specific list item based on text content often.
+  const hideOriginalMyCourses = () => {
+    const navItems = document.querySelectorAll('.nav-item, .more-nav > li');
+    navItems.forEach(item => {
+      if (item.innerText.trim() === 'My courses' || item.querySelector('a[title="My courses"]')) {
+        item.style.display = 'none';
+      }
+    });
+  };
+
+  // Run immediately and also observe
+  hideOriginalMyCourses();
+  const hideObserver = new MutationObserver(hideOriginalMyCourses);
+  hideObserver.observe(document.body, { childList: true, subtree: true });
 
 })();
