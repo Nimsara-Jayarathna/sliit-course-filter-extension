@@ -51,45 +51,52 @@
       }
     }];
 
-    try {
-      const url = `${API_ENDPOINT}?sesskey=${sesskey}&info=${API_METHOD}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    const url = `${API_ENDPOINT}?sesskey=${sesskey}&info=${API_METHOD}`;
 
-      const json = await response.json();
-      if (json[0] && json[0].error) {
-        throw new Error(json[0].exception);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const json = await response.json();
+        if (json[0] && json[0].error) {
+          throw new Error(json[0].exception);
+        }
+
+        const rawCourses = json[0].data.courses;
+
+        // Transform to our format
+        const courses = rawCourses.map(c => ({
+          title: c.fullname,
+          href: c.viewurl,
+          // Course category is often just "Miscellaneous" or "2024 July".
+          // If it looks like a semester, use it. Otherwise fall back to parsing title.
+          category: c.coursecategory || parseSemesterFromTitle(c.fullname)
+        }));
+
+        await chrome.storage.local.set({
+          [STORAGE_KEYS.COURSES_CACHE]: courses,
+          [STORAGE_KEYS.LAST_FETCH]: Date.now()
+        });
+
+        return courses;
+
+      } catch (err) {
+        console.warn(`SLIIT Filter: API Fetch attempt ${attempt} failed`, err);
+        if (attempt === 3) {
+          console.error('SLIIT Filter: All API Fetch attempts failed', err);
+          return [];
+        }
+        // Exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * attempt));
       }
-
-      const rawCourses = json[0].data.courses;
-
-      // Transform to our format
-      const courses = rawCourses.map(c => ({
-        title: c.fullname,
-        href: c.viewurl,
-        // Course category is often just "Miscellaneous" or "2024 July".
-        // If it looks like a semester, use it. Otherwise fall back to parsing title.
-        category: c.coursecategory || parseSemesterFromTitle(c.fullname)
-      }));
-
-      // Bonus: Check for "Hidden" courses? The 'all' classification usually covers Everything.
-      // But just in case, we could do a second call for 'hidden' if needed.
-      // For now, 'all' is usually sufficient in Moodle 4.x.
-
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.COURSES_CACHE]: courses,
-        [STORAGE_KEYS.LAST_FETCH]: Date.now()
-      });
-
-      return courses;
-
-    } catch (err) {
-      console.error('SLIIT Filter: API Fetch failed', err);
-      return [];
     }
+    return [];
   };
 
   const parseSemesterFromTitle = (title) => {
@@ -177,6 +184,7 @@
   };
 
   const injectNavbarItem = async () => {
+    // 1. Check & Inject Placeholder SYNCHRONOUSLY
     if (document.getElementById('scf-navbar-item')) return;
 
     // Navbar Selectors (Updated for 4.x)
@@ -186,10 +194,6 @@
 
     if (!navContainer) return;
 
-    let courses = await getCourses();
-    let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
-    let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
-
     const navItem = createElement('li', ['nav-item', 'scf-nav-item']); // 'nav-item' is standard BS class
     navItem.id = 'scf-navbar-item';
 
@@ -197,33 +201,13 @@
     const navLink = createElement('a', ['nav-link', 'scf-nav-link'], 'Semester');
     navLink.href = '#';
     navLink.innerHTML = `<span class="scf-icon">📚</span> Semester`;
+    navItem.appendChild(navLink);
 
     // Wrapper
     const dropdownWrapper = createElement('div', ['scf-dropdown-wrapper']);
-
-    const renderDropdown = () => {
-      dropdownWrapper.innerHTML = '';
-      const instance = createDropdown(
-        courses,
-        currentSem,
-        (newSem) => {
-          currentSem = newSem;
-          chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
-          instance.updateBody(newSem);
-        },
-        async () => {
-          dropdownWrapper.classList.add('loading');
-          courses = await getCourses(true);
-          dropdownWrapper.classList.remove('loading');
-          renderDropdown();
-        }
-      );
-      dropdownWrapper.appendChild(instance.dom);
-    };
-
-    renderDropdown();
-
-    navItem.appendChild(navLink);
+    const loadingEl = createElement('div', ['scf-loading'], 'Loading...');
+    loadingEl.style.padding = '10px';
+    dropdownWrapper.appendChild(loadingEl);
     navItem.appendChild(dropdownWrapper);
 
     // Insert Logic: Try to be 2nd or 3rd item
@@ -248,6 +232,38 @@
     navItem.addEventListener('click', (e) => {
       if (!navItem.classList.contains('show')) show();
     });
+
+    // 2. Async Data Fetch & Populate
+    try {
+      let courses = await getCourses();
+      let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
+      let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
+
+      const renderDropdown = () => {
+        dropdownWrapper.innerHTML = '';
+        const instance = createDropdown(
+          courses,
+          currentSem,
+          (newSem) => {
+            currentSem = newSem;
+            chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
+            instance.updateBody(newSem);
+          },
+          async () => {
+            dropdownWrapper.classList.add('loading');
+            courses = await getCourses(true);
+            dropdownWrapper.classList.remove('loading');
+            renderDropdown();
+          }
+        );
+        dropdownWrapper.appendChild(instance.dom);
+      };
+
+      renderDropdown();
+    } catch (err) {
+      console.error('SLIIT Filter: Failed to initialize navbar item', err);
+      dropdownWrapper.innerHTML = '<div style="padding:10px; color:red;">Failed to load</div>';
+    }
   };
 
   // Observer
