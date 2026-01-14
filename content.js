@@ -5,22 +5,14 @@
   const STORAGE_KEYS = {
     COURSES_CACHE: 'myCoursesCache',
     LAST_FETCH: 'myCoursesLastFetch',
-    SELECTED_SEMESTER: 'myCoursesSelectedSemester' // Remember user's choice
+    SELECTED_SEMESTER: 'myCoursesSelectedSemester'
   };
 
-  const CACHE_DURATION = 1000 * 60 * 15; // 15 minutes cache
-  const MAX_RETRIES = 5;
+  const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
 
-  // New Moodle Navbar Selectors (Moodle 4.x / Boost Theme)
-  const SELECTORS = {
-    NAVBAR_CONTAINER: 'nav .primary-navigation .more-nav, nav .primary-navigation, .navbar-nav', // Try multiple to be safe
-    NAVBAR_ITEM_CLASS: 'nav-item',
-    NAVBAR_LINK_CLASS: 'nav-link',
-    // Parsing selectors for the fetched page
-    COURSE_ITEM: '.course-listitem, .course-card',
-    COURSE_NAME: '.coursename, .aalink',
-    COURSE_CATEGORY: '.categoryname, .text-muted'
-  };
+  // API Config
+  const API_ENDPOINT = '/lib/ajax/service.php';
+  const API_METHOD = 'core_course_get_enrolled_courses_by_timeline_classification';
 
   // --- Helpers ---
   const createElement = (tag, classes = [], html = '') => {
@@ -30,48 +22,79 @@
     return el;
   };
 
-  // --- Data Fetching & Parsing ---
-  const fetchAndParseCourses = async () => {
+  const getSesskey = () => {
+    // Try to find sesskey in logout link
+    const link = document.querySelector('a[href*="sesskey="]');
+    if (link) {
+      const match = link.href.match(/sesskey=([^&]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  };
+
+  // --- Data Fetching (API) ---
+  const fetchCoursesFromAPI = async () => {
+    const sesskey = getSesskey();
+    if (!sesskey) {
+      console.warn('SLIIT Filter: Sesskey not found. Cannot fetch courses via API.');
+      return [];
+    }
+
+    const payload = [{
+      index: 0,
+      methodname: API_METHOD,
+      args: {
+        offset: 0,
+        limit: 0, // 0 = All
+        classification: 'all', // Get Everything (Past, Future, In Progress)
+        sort: 'fullname'
+      }
+    }];
+
     try {
-      const response = await fetch('/my/courses.php?view=list'); // Force list view for easier parsing
-      if (!response.ok) throw new Error('Network response was not ok');
-      const text = await response.text();
-      const doc = new DOMParser().parseFromString(text, 'text/html');
-
-      const courses = [];
-      const items = doc.querySelectorAll(SELECTORS.COURSE_ITEM);
-
-      items.forEach(item => {
-        const nameEl = item.querySelector(SELECTORS.COURSE_NAME);
-        const catEl = item.querySelector(SELECTORS.COURSE_CATEGORY);
-
-        if (nameEl) {
-          const title = nameEl.innerText.trim();
-          const href = nameEl.getAttribute('href');
-          // Try to find category: Explicit element OR regex from title
-          let category = 'Uncategorized';
-          if (catEl) {
-            category = catEl.innerText.trim();
-          } else {
-            const match = title.match(/\[(.*?)]/); // Fallback: try looking for [2024/JUL] in title
-            if (match) category = match[1];
-          }
-
-          courses.push({ title, href, category });
-        }
+      const url = `${API_ENDPOINT}?sesskey=${sesskey}&info=${API_METHOD}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
-      // Save to storage
+      const json = await response.json();
+      if (json[0] && json[0].error) {
+        throw new Error(json[0].exception);
+      }
+
+      const rawCourses = json[0].data.courses;
+
+      // Transform to our format
+      const courses = rawCourses.map(c => ({
+        title: c.fullname,
+        href: c.viewurl,
+        // Course category is often just "Miscellaneous" or "2024 July".
+        // If it looks like a semester, use it. Otherwise fall back to parsing title.
+        category: c.coursecategory || parseSemesterFromTitle(c.fullname)
+      }));
+
+      // Bonus: Check for "Hidden" courses? The 'all' classification usually covers Everything.
+      // But just in case, we could do a second call for 'hidden' if needed.
+      // For now, 'all' is usually sufficient in Moodle 4.x.
+
       await chrome.storage.local.set({
         [STORAGE_KEYS.COURSES_CACHE]: courses,
         [STORAGE_KEYS.LAST_FETCH]: Date.now()
       });
 
       return courses;
+
     } catch (err) {
-      console.error('SLIIT Filter: Failed to fetch courses', err);
+      console.error('SLIIT Filter: API Fetch failed', err);
       return [];
     }
+  };
+
+  const parseSemesterFromTitle = (title) => {
+    const match = title.match(/\[(.*?)]/);
+    return match ? match[1] : 'Uncategorized';
   };
 
   const getCourses = async (forceRefresh = false) => {
@@ -82,15 +105,13 @@
     if (!forceRefresh && cache && lastFetch && (Date.now() - lastFetch < CACHE_DURATION)) {
       return cache;
     }
-    return await fetchAndParseCourses();
+    return await fetchCoursesFromAPI();
   };
 
   // --- UI Components ---
   const createCourseList = (courses, targetCategory) => {
     const list = createElement('div', ['scf-course-list']);
-
-    // Filter
-    const filtered = courses.filter(c => c.category.includes(targetCategory) || targetCategory === 'All');
+    const filtered = courses.filter(c => c.category === targetCategory || targetCategory === 'All'); // Exact match preferred
 
     if (filtered.length === 0) {
       list.innerHTML = `<div class="scf-empty">No courses found for ${targetCategory}</div>`;
@@ -102,44 +123,42 @@
       item.href = c.href;
       list.appendChild(item);
     });
-
     return list;
   };
 
-  const createDropdown = (courses, selectedSemester, onSemesterChange, onRescan) => {
+  const createDropdown = (courses, currentSem, onSemesterChange, onRescan) => {
     const dropdown = createElement('div', ['scf-dropdown']);
 
-    // Header: Semester Selector
+    // Header
     const header = createElement('div', ['scf-dropdown-header']);
     const semesters = [...new Set(courses.map(c => c.category))].sort().reverse();
 
-    // "All" option? Maybe better to just show semesters.
+    if (!semesters.includes(currentSem) && semesters.length > 0) {
+      currentSem = semesters[0];
+      onSemesterChange(currentSem); // Auto-correct
+    }
 
     const select = createElement('select', ['scf-semester-select']);
     semesters.forEach(s => {
       const opt = createElement('option', [], s);
       opt.value = s;
-      opt.selected = s === selectedSemester;
+      opt.selected = s === currentSem;
       select.appendChild(opt);
     });
 
-    // Add event listener for change
-    select.addEventListener('change', (e) => {
-      onSemesterChange(e.target.value);
-    });
-    // Stop click propagation on select to prevent dropdown closing
+    select.addEventListener('change', (e) => onSemesterChange(e.target.value));
     select.addEventListener('click', (e) => e.stopPropagation());
 
     header.appendChild(createElement('span', ['scf-label'], 'Semester: '));
     header.appendChild(select);
     dropdown.appendChild(header);
 
-    // Body: Course List container
+    // Body
     const body = createElement('div', ['scf-dropdown-body']);
-    body.appendChild(createCourseList(courses, selectedSemester || semesters[0]));
+    body.appendChild(createCourseList(courses, currentSem));
     dropdown.appendChild(body);
 
-    // Footer: Refresh
+    // Footer
     const footer = createElement('div', ['scf-dropdown-footer']);
     const refreshBtn = createElement('button', ['scf-refresh-btn'], '↻ Rescan Courses');
     refreshBtn.addEventListener('click', (e) => {
@@ -158,98 +177,86 @@
   };
 
   const injectNavbarItem = async () => {
-    // Avoid duplicates
     if (document.getElementById('scf-navbar-item')) return;
 
-    // Find navbar
-    const navContainer = document.querySelector(SELECTORS.NAVBAR_CONTAINER);
-    if (!navContainer) return; // Not loaded yet
+    // Navbar Selectors (Updated for 4.x)
+    const navContainer = document.querySelector('nav .primary-navigation .more-nav') ||
+      document.querySelector('.primary-navigation') ||
+      document.querySelector('.navbar-nav');
 
-    // Get Data
+    if (!navContainer) return;
+
     let courses = await getCourses();
     let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
     let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
 
-    // Create Nav Item
-    const navItem = createElement('li', [SELECTORS.NAVBAR_ITEM_CLASS, 'scf-nav-item']);
+    const navItem = createElement('li', ['nav-item', 'scf-nav-item']); // 'nav-item' is standard BS class
     navItem.id = 'scf-navbar-item';
 
-    // Trigger Link
-    const navLink = createElement('a', [SELECTORS.NAVBAR_LINK_CLASS, 'scf-nav-link'], 'Semester');
+    // Create Link
+    const navLink = createElement('a', ['nav-link', 'scf-nav-link'], 'Semester');
     navLink.href = '#';
-    navLink.setAttribute('role', 'button');
-
-    // Icon (optional)
     navLink.innerHTML = `<span class="scf-icon">📚</span> Semester`;
 
-    // Dropdown Container
+    // Wrapper
     const dropdownWrapper = createElement('div', ['scf-dropdown-wrapper']);
 
-    // Functions to handle state
-    const handleSemesterChange = (newSem) => {
-      currentSem = newSem;
-      chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
-      dropdownInstance.updateBody(newSem);
-    };
-
-    const handleRescan = async () => {
-      dropdownWrapper.classList.add('loading');
-      courses = await getCourses(true); // Force fetch
-      // Re-render
+    const renderDropdown = () => {
       dropdownWrapper.innerHTML = '';
-      const newInstance = createDropdown(courses, currentSem, handleSemesterChange, handleRescan);
-      dropdownWrapper.appendChild(newInstance.dom);
-      dropdownWrapper.classList.remove('loading');
-      // Update current sem if invalid?
-      const newSems = [...new Set(courses.map(c => c.category))];
-      if (!newSems.includes(currentSem) && newSems.length) {
-        handleSemesterChange(newSems[0]);
-      }
+      const instance = createDropdown(
+        courses,
+        currentSem,
+        (newSem) => {
+          currentSem = newSem;
+          chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
+          instance.updateBody(newSem);
+        },
+        async () => {
+          dropdownWrapper.classList.add('loading');
+          courses = await getCourses(true);
+          dropdownWrapper.classList.remove('loading');
+          renderDropdown();
+        }
+      );
+      dropdownWrapper.appendChild(instance.dom);
     };
 
-    let dropdownInstance = createDropdown(courses, currentSem, handleSemesterChange, handleRescan);
-    dropdownWrapper.appendChild(dropdownInstance.dom);
+    renderDropdown();
 
-    // Assembly
     navItem.appendChild(navLink);
     navItem.appendChild(dropdownWrapper);
 
-    // Insert: Try to put it after "My courses" (usually index 1 or 2)
-    // Or just append to the container
-    navContainer.insertBefore(navItem, navContainer.children[2] || null);
+    // Insert Logic: Try to be 2nd or 3rd item
+    if (navContainer.children.length > 2) {
+      navContainer.insertBefore(navItem, navContainer.children[2]);
+    } else {
+      navContainer.appendChild(navItem);
+    }
 
-    // Events (Hover/Click)
-    let hideTimeout;
+    // Interaction
+    let timer;
     const show = () => {
-      clearTimeout(hideTimeout);
+      clearTimeout(timer);
       navItem.classList.add('show');
     };
     const hide = () => {
-      hideTimeout = setTimeout(() => {
-        navItem.classList.remove('show');
-      }, 300); // delay to allow moving mouse to dropdown
+      timer = setTimeout(() => navItem.classList.remove('show'), 300);
     };
 
     navItem.addEventListener('mouseenter', show);
     navItem.addEventListener('mouseleave', hide);
     navItem.addEventListener('click', (e) => {
-      // Keep open on click
       if (!navItem.classList.contains('show')) show();
     });
   };
 
-  // --- Observer ---
-  // Wait for navbar to exist
-  const observer = new MutationObserver((mutations) => {
-    if (document.querySelector(SELECTORS.NAVBAR_CONTAINER)) {
+  // Observer
+  const observer = new MutationObserver(() => {
+    if (document.querySelector('nav') && !document.getElementById('scf-navbar-item')) {
       injectNavbarItem();
-      // Don't disconnect, Moodle might erase navbar on navigation (SPA-like behaviors)
     }
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
-
-  // Initial try
   injectNavbarItem();
 
 })();
