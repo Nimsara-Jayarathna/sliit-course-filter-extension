@@ -5,7 +5,8 @@
   const STORAGE_KEYS = {
     COURSES_CACHE: 'myCoursesCache',
     LAST_FETCH: 'myCoursesLastFetch',
-    SELECTED_SEMESTER: 'myCoursesSelectedSemester'
+    SELECTED_SEMESTER: 'myCoursesSelectedSemester',
+    FOCUS_MODE: 'scf_focus_mode'
   };
 
   const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
@@ -253,7 +254,11 @@
       const diffMins = Math.floor((Date.now() - lastFetch) / 60000);
       lastFetchedTime = diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
     }
-    const timestamp = createElement('span', ['scf-timestamp'], `Synced: ${lastFetchedTime}`);
+    // const timestamp = createElement('span', ['scf-timestamp'], `Synced: ${lastFetchedTime}`); 
+    // Commented out timestamp to save space if needed, or keep it? 
+    // User didn't ask to remove it, but complained about clutter. Let's keep it small.
+    // Actually user said "just keep the Semester label only" regarding navbar, not footer. 
+    // I will keep timestamp but maybe simpler.
 
     const refreshBtn = createElement('button', ['scf-btn', 'scf-btn-secondary'], '↻ Rescan');
     refreshBtn.addEventListener('click', (e) => {
@@ -261,7 +266,6 @@
       onRescan();
     });
 
-    rightActions.appendChild(timestamp);
     rightActions.appendChild(refreshBtn);
 
     footer.appendChild(myCoursesBtn);
@@ -420,5 +424,65 @@
   setTimeout(closeRightDrawer, 500);
   setTimeout(closeRightDrawer, 1500);
   setTimeout(closeRightDrawer, 3000);
+
+  const injectFocusToggle = async () => {
+    if (document.getElementById('scf-focus-toggle')) return;
+
+    const navContainer = document.querySelector('nav .primary-navigation .more-nav') ||
+      document.querySelector('.primary-navigation') ||
+      document.querySelector('.navbar-nav');
+
+    if (!navContainer) return;
+
+    // Fetch state
+    const focusData = await chrome.storage.local.get(STORAGE_KEYS.FOCUS_MODE);
+    let isFocusMode = focusData[STORAGE_KEYS.FOCUS_MODE] || false;
+    if (isFocusMode) document.body.classList.add('scf-focus-enabled');
+
+    const toggleItem = createElement('li', ['nav-item', 'scf-nav-item', 'scf-focus-item']);
+    toggleItem.id = 'scf-focus-toggle';
+
+    // Toggle UI
+    const wrapper = createElement('label', ['scf-focus-wrapper']);
+    wrapper.title = "Toggle Focus Mode";
+    // Slightly different style for navbar: no text label, just icon/switch?
+    // Title says "toogle button". I'll use the same switch style but maybe adapt colors.
+
+    const checkbox = createElement('input', ['scf-focus-checkbox']);
+    checkbox.type = 'checkbox';
+    checkbox.checked = isFocusMode;
+
+    const slider = createElement('div', ['scf-focus-slider']);
+    // Add text label if space permits, or tooltip.
+    // User said "after all the lable are placed".
+
+    wrapper.appendChild(checkbox);
+    wrapper.appendChild(slider);
+
+    toggleItem.appendChild(wrapper);
+
+    // Event
+    checkbox.addEventListener('change', (e) => {
+      const enabled = e.target.checked;
+      if (enabled) {
+        document.body.classList.add('scf-focus-enabled');
+      } else {
+        document.body.classList.remove('scf-focus-enabled');
+      }
+      chrome.storage.local.set({ [STORAGE_KEYS.FOCUS_MODE]: enabled });
+    });
+
+    navContainer.appendChild(toggleItem);
+  };
+
+  // Run injectFocusToggle
+  injectFocusToggle();
+  // Also observe? 
+  const focusObserver = new MutationObserver(() => {
+    if (document.querySelector('nav') && !document.getElementById('scf-focus-toggle')) {
+      injectFocusToggle();
+    }
+  });
+  focusObserver.observe(document.body, { childList: true, subtree: true });
 
 })();

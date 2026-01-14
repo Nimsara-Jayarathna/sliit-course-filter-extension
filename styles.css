@@ -349,3 +349,89 @@
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+/* --- Focus Mode Styles --- */
+/* Hide all navbar items except ours (Semester Dropdown + Focus Toggle) */
+body.scf-focus-enabled .primary-navigation .nav-item:not(#scf-navbar-item):not(#scf-focus-toggle),
+body.scf-focus-enabled .more-nav>li:not(#scf-navbar-item):not(#scf-focus-toggle),
+body.scf-focus-enabled .navbar-nav>li:not(#scf-navbar-item):not(#scf-focus-toggle) {
+  display: none !important;
+}
+
+/* Exception: Keep the logo/home link if it's a list item (depends on theme) */
+/* Often logo is outside nav items, but sometimes "Home" is first item. */
+/* User said "just keep the Semester label only". I will strictly hide nav items. */
+
+/* Toggle Switch Styles */
+.scf-focus-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Navbar Toggle Item Specifics */
+.scf-nav-item.scf-focus-item {
+  display: flex !important;
+  /* Force display when focused */
+  align-items: center;
+  padding: 0 10px;
+}
+
+.scf-focus-item .scf-focus-wrapper {
+  color: rgba(0, 0, 0, 0.7);
+  /* Match Moodle nav link color usually */
+}
+
+.scf-focus-item .scf-focus-wrapper:hover {
+  color: #000;
+}
+
+.scf-focus-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.scf-focus-checkbox {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.scf-focus-slider {
+  position: relative;
+  cursor: pointer;
+  width: 32px;
+  height: 18px;
+  background-color: #ccc;
+  transition: .2s;
+  border-radius: 18px;
+}
+
+.scf-focus-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.scf-focus-checkbox:checked+.scf-focus-slider {
+  background-color: #0f6cbf;
+}
+
+.scf-focus-checkbox:checked+.scf-focus-slider:before {
+  transform: translateX(14px);
+}
+
+.scf-focus-checkbox:focus+.scf-focus-slider {
+  box-shadow: 0 0 1px #0f6cbf;
+}
