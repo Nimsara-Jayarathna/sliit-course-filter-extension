@@ -228,12 +228,7 @@
 
     headerRow.appendChild(controlsWrapper);
     header.appendChild(headerRow);
-
-    // Header Row 2: Stats / Context
-    const statsRow = createElement('div', ['scf-stats-row']);
-    const currentCount = courses.filter(c => c.category === currentSem).length;
-    statsRow.innerHTML = `<span class="scf-course-count">Total: <strong>${currentCount}</strong> Courses</span>`;
-    header.appendChild(statsRow);
+    dropdown.appendChild(header);
 
     dropdown.appendChild(header);
 
@@ -277,9 +272,6 @@
       dom: dropdown, updateBody: (newSem) => {
         body.innerHTML = '';
         body.appendChild(createCourseList(courses, newSem));
-        // Update Stats
-        const newCount = courses.filter(c => c.category === newSem).length;
-        statsRow.innerHTML = `<span class="scf-course-count">Total: <strong>${newCount}</strong> Courses</span>`;
       }
     };
   };
