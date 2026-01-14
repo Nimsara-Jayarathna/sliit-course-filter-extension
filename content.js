@@ -139,13 +139,21 @@
     return list;
   };
 
-  const createDropdown = (courses, currentSem, onSemesterChange, onRescan) => {
+  const createDropdown = (courses, currentSem, lastFetch, onSemesterChange, onRescan) => {
     const dropdown = createElement('div', ['scf-dropdown']);
 
-    // Header
+    // --- Header ---
     const header = createElement('div', ['scf-dropdown-header']);
+    header.style.flexDirection = 'column';
+    header.style.gap = '8px';
 
+    // Header Row 1: Label + Select (Inline)
     const headerRow = createElement('div', ['scf-header-row']);
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'space-between';
+    headerRow.style.alignItems = 'center';
+    headerRow.style.width = '100%';
+
     const semesters = [...new Set(courses.map(c => c.category))].sort().reverse();
 
     if (!semesters.includes(currentSem) && semesters.length > 0) {
@@ -207,9 +215,25 @@
     selectContainer.appendChild(selectOptions);
     // ------------------------------------
 
-    headerRow.appendChild(createElement('span', ['scf-label'], 'Semester: '));
-    headerRow.appendChild(selectContainer); // Append custom select instead of native
+    // Label + Select Wrapper -- replacing direct append
+    const controlsWrapper = createElement('div', ['scf-controls-wrapper']);
+    controlsWrapper.style.display = 'flex';
+    controlsWrapper.style.alignItems = 'center';
+    controlsWrapper.style.gap = '10px';
+
+    // Label moved inside wrapper
+    const label = createElement('span', ['scf-label'], 'Select Semester:');
+    controlsWrapper.appendChild(label);
+    controlsWrapper.appendChild(selectContainer);
+
+    headerRow.appendChild(controlsWrapper);
     header.appendChild(headerRow);
+
+    // Header Row 2: Stats / Context
+    const statsRow = createElement('div', ['scf-stats-row']);
+    const currentCount = courses.filter(c => c.category === currentSem).length;
+    statsRow.innerHTML = `<span class="scf-course-count">Total: <strong>${currentCount}</strong> Courses</span>`;
+    header.appendChild(statsRow);
 
     dropdown.appendChild(header);
 
@@ -218,28 +242,44 @@
     body.appendChild(createCourseList(courses, currentSem));
     dropdown.appendChild(body);
 
-    // Footer
+    // --- Footer ---
     const footer = createElement('div', ['scf-dropdown-footer']);
 
-    // "Go to My Courses" Link
-    const myCoursesLink = createElement('a', ['scf-my-courses-link'], 'Go to My Courses');
-    myCoursesLink.href = '/my/courses.php';
+    // Left: Primary Action
+    const myCoursesBtn = createElement('a', ['scf-btn', 'scf-btn-primary'], 'Go to My Courses');
+    myCoursesBtn.href = '/my/courses.php';
 
-    // Refresh Button
-    const refreshBtn = createElement('button', ['scf-refresh-btn'], '↻ Rescan Courses');
+    // Right: Secondary Action + Timestamp
+    const rightActions = createElement('div', ['scf-footer-right']);
+
+    // Timestamp logic
+    let lastFetchedTime = 'Just now';
+    if (lastFetch) {
+      const diffMins = Math.floor((Date.now() - lastFetch) / 60000);
+      lastFetchedTime = diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
+    }
+    const timestamp = createElement('span', ['scf-timestamp'], `Synced: ${lastFetchedTime}`);
+
+    const refreshBtn = createElement('button', ['scf-btn', 'scf-btn-secondary'], '↻ Rescan');
     refreshBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       onRescan();
     });
 
-    footer.appendChild(myCoursesLink);
-    footer.appendChild(refreshBtn);
+    rightActions.appendChild(timestamp);
+    rightActions.appendChild(refreshBtn);
+
+    footer.appendChild(myCoursesBtn);
+    footer.appendChild(rightActions);
     dropdown.appendChild(footer);
 
     return {
       dom: dropdown, updateBody: (newSem) => {
         body.innerHTML = '';
         body.appendChild(createCourseList(courses, newSem));
+        // Update Stats
+        const newCount = courses.filter(c => c.category === newSem).length;
+        statsRow.innerHTML = `<span class="scf-course-count">Total: <strong>${newCount}</strong> Courses</span>`;
       }
     };
   };
@@ -300,11 +340,14 @@
       let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
       let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
 
-      const renderDropdown = () => {
+      const lastFetchData = await chrome.storage.local.get(STORAGE_KEYS.LAST_FETCH);
+
+      const renderDropdown = (lastFetch) => {
         dropdownWrapper.innerHTML = '';
         const instance = createDropdown(
           courses,
           currentSem,
+          lastFetch,
           (newSem) => {
             currentSem = newSem;
             chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
@@ -313,14 +356,15 @@
           async () => {
             dropdownWrapper.classList.add('loading');
             courses = await getCourses(true);
+            const refetchedData = await chrome.storage.local.get(STORAGE_KEYS.LAST_FETCH);
             dropdownWrapper.classList.remove('loading');
-            renderDropdown();
+            renderDropdown(refetchedData[STORAGE_KEYS.LAST_FETCH]);
           }
         );
         dropdownWrapper.appendChild(instance.dom);
       };
 
-      renderDropdown();
+      renderDropdown(lastFetchData[STORAGE_KEYS.LAST_FETCH]);
     } catch (err) {
       console.error('SLIIT Filter: Failed to initialize navbar item', err);
       dropdownWrapper.innerHTML = '<div style="padding:10px; color:red;">Failed to load</div>';
