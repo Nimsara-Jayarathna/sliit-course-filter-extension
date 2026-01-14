@@ -1,52 +1,51 @@
-# 🎓 SLIIT CourseWeb Navbar Extension
+# ✨ SLIIT CourseWeb Extension - Enhanced UI Edition
 
-A powerful Chrome extension that completely upgrades the navigation experience on [courseweb.sliit.lk](https://courseweb.sliit.lk/). 
+This is a special version of the SLIIT CourseWeb Extension focused on providing a **fluid, premium user experience** and a **cleaner, distraction-free LMS interface**.
 
-It replaces the default, limited "My courses" logic with a **Global Navigation Menu** that fetches *all* your courses (even hidden or past ones) via the Moodle API and organizes them nicely by semester.
-
----
-
-## 🚀 Why the Change?
-
-Recently, **SLIIT CourseWeb underwent a major UI overhaul**, which changed the underlying structure of the website. This update unfortunately **broke the logic of the previous extension**, which relied on scraping the "My courses" dropdown from the page DOM.
-
-**This major update (v2.0) introduces a complete refactor to fix this:**
-1.  **API-First Approach**: Instead of relying on the fragile page structure, we now fetch course data directly from Moodle's API. This makes the extension **immune to future UI changes**.
-2.  **Global Accessibility**: The menu is injected into the global top navigation bar, so you can access your courses from *any* page.
-3.  **Cleaner UI**: We strip redundant clutter (like semester tags in names) and provide a focused, semester-based view.
+> 🚀 **Current Branch:** `feature/visual-smoothing`
 
 ---
 
-## ✨ Features
+## 🎨 Key Differences in This Version
 
-- **📚 Global Semester Menu**: A new "Semester" dropdown in the top navbar.
-- **🔍 Smart Filtering**: Automatically groups courses by semester.
-- **🧹 Clean Course Names**: Removes clutter like `[2024 JAN - JUN]` from course titles for a readable list.
-- **🔄 Auto-Retry**: Robust fetching with auto-retry logic to handle network bumps.
-- **⚡ Fast Access**: Caches your course list locally for instant loading.
-- **🔗 My Courses Shortcut**: Adds a quick "Go to My Courses" link in the footer of the menu.
+Unlike the standard version, this edition introduces significant UI/UX improvements:
 
----
+### 1. 🌊 Fluid & Smooth Menu Animations
+The Global Navigation Menu opens and closes with smooth, high-frame-rate transitions. No more jarring pop-ins. The interactions feel native and polished.
 
-## 📦 Installation
+### 2. 🧹 Cleaned LMS Page Interface
+We don't just add a menu; we clean up the mess. This version actively removes:
+-   Cluttered dashboard widgets.
+-   Redundant banners and spacing.
+-   Distracting elements from the course pages.
+Resulting in a **focused, minimalist learning environment**.
 
-### Load as Unpacked Extension
-1.  Clone or download this repository:
-    ```bash
-    git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
-    ```
-2.  Open Chrome and navigate to:
-    `chrome://extensions/`
-3.  Enable **Developer mode** (top-right corner).
-4.  Click **Load unpacked** and select the project folder.
-5.  Refesh SLIIT CourseWeb to see the changes!
+### 3. 🛡️ Robust API Integration
+Like the main version, it uses the Moodle API to fetch all courses (hidden/past), but with optimized caching for smoother rendering matching the new UI animations.
 
 ---
 
-## 🏛️ Legacy Version
+## 📦 Installation (This Branch)
 
-If you prefer the old behavior (which simply filtered the existing list without API calls), you can access the legacy version here:
+To use this enhanced version, you must clone this specific branch:
 
-[**View Legacy Version (v1.0)**](https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension/commits/v1.0)
+```bash
+git clone -b feature/visual-smoothing https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
 
-*Note: The legacy version does not support fetching courses not already visible on the page.*
+### Setup Steps
+1.  **Clone** the repo using the command above.
+2.  Open Chrome and go to `chrome://extensions/`.
+3.  Enable **Developer mode**.
+4.  Click **Load unpacked**.
+5.  Select the `sliit-course-filter-extension` folder.
+6.  Refresh CourseWeb and enjoy the smooth new look! 🌊
+
+---
+
+## 🔄 Returning to Standard Version
+
+If you prefer the standard utility without the UI overrides:
+```bash
+git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
