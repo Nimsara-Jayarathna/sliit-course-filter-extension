@@ -68,7 +68,8 @@
 
         const json = await response.json();
         if (json[0] && json[0].error) {
-          throw new Error(json[0].exception);
+          console.error('SLIIT Filter: API Error Details:', json[0]);
+          throw new Error(json[0].message || json[0].exception || 'Unknown Moodle Error');
         }
 
         const rawCourses = json[0].data.courses;
