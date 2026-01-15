@@ -1,73 +1,90 @@
 body {
   margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: #202124;
-  /* Dark Background */
+  /* Material Dark Background */
   color: #e8eaed;
-  /* Light Text */
-  width: 300px;
+  /* Material Light Text */
+  width: 320px;
+  /* Slightly wider for better spacing */
+  padding-bottom: 8px;
 }
 
 .container {
-  padding: 16px;
+  padding: 0;
 }
 
+/* --- Header --- */
 .header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
+  padding: 16px 20px;
+  background-color: #292a2d;
+  /* Slightly lighter header */
   border-bottom: 1px solid #3c4043;
 }
 
 .logo {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
 }
 
 h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #8ab4f8;
-  /* Lighter Blue */
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+  letter-spacing: 0.5px;
 }
 
+/* --- Settings List --- */
 .settings-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  padding: 8px 0;
 }
 
 .setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 12px 20px;
+  transition: background-color 0.2s;
+}
+
+.setting-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .setting-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  padding-right: 16px;
 }
 
 .setting-label {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
+  color: #e8eaed;
 }
 
 .setting-desc {
-  font-size: 11px;
+  font-size: 12px;
   color: #9aa0a6;
-  /* Muted Text */
+  /* Muted text */
+  line-height: 1.4;
 }
 
-/* Toggle Switch */
+/* --- Toggle Switch (Material Design 3 Style) --- */
 .toggle-switch {
   position: relative;
-  width: 36px;
-  height: 20px;
+  width: 52px;
+  /* Wider toggle */
+  height: 32px;
+  /* Taller toggle */
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -83,56 +100,99 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #5f6368;
+  background-color: #444746;
+  /* Inactive track (Material Grey) */
   transition: .3s;
-  border-radius: 20px;
+  border-radius: 32px;
+  border: 2px solid #444746;
+  /* matches track */
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
+  height: 24px;
+  width: 24px;
   left: 2px;
   bottom: 2px;
-  background-color: #202124;
+  background-color: #8e918f;
+  /* Inactive knob (Light Grey) */
   transition: .3s;
   border-radius: 50%;
+  /* Center potential icon */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #052e58;
+  /* Checkmark color (dark blue) */
+  font-family: system-ui, sans-serif;
 }
 
+/* Checked State */
 input:checked+.slider {
   background-color: #8ab4f8;
+  /* Active blue track */
+  border-color: #8ab4f8;
 }
 
 input:checked+.slider:before {
-  transform: translateX(16px);
-  background-color: #202124;
+  transform: translateX(20px);
+  /* Move right */
+  background-color: #0c1e33;
+  /* Active knob (Dark Blue per material spec usually, but mockup shows lighter? Let's verify) */
+  /* Mockup shows: Track = Blue, Knob = Lighter Blue/White? */
+  /* Actually, looking at the mockup: */
+  /* "Extension Enabled": Track=Blue, Knob=Light Blue/White with Checkmark */
+  /* "Hide Service": Track=Blue, Knob=Light Blue/White (No checkmark) */
+  /* Let's adjust colors to match the image perception: */
+  background-color: #d3e3fd;
+  /* Very light blue knob */
+  width: 24px;
+  height: 24px;
 }
 
+/* Specific Master Switch Checkmark */
+#extensionEnabled:checked+.slider:before {
+  content: "✔";
+  /* Simple checkmark */
+  font-size: 14px;
+  font-weight: bold;
+  color: #0f3963;
+  /* Dark blue text for contrast */
+}
+
+/* Focus State */
 input:focus+.slider {
-  box-shadow: 0 0 1px #8ab4f8;
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.3);
 }
 
-/* Disable state for sub-controls if master is off */
+/* Disabled State */
 body.disabled .setting-item:not(:first-child) {
-  opacity: 0.5;
+  opacity: 0.4;
   pointer-events: none;
 }
 
+/* --- Footer --- */
 .footer {
-  margin-top: 24px;
-  padding-top: 12px;
-  border-top: 1px solid #3c4043;
+  margin-top: 8px;
+  padding: 16px 24px;
+  /* More padding */
   text-align: center;
+  /* Centered in mockup? No, mockup says "Manage Extensions [icon]" at bottom. Usually centered or right. Mockup fits centered look. */
+  border-top: 1px solid #3c4043;
 }
 
 .footer a {
-  font-size: 11px;
-  color: #9aa0a6;
+  font-size: 13px;
+  color: #8ab4f8;
   text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .footer a:hover {
   text-decoration: underline;
-  color: #8ab4f8;
 }
