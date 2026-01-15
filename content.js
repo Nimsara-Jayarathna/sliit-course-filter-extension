@@ -408,20 +408,31 @@
 
   // --- Auto Login Logic ---
   const checkAndAutoLogin = async () => {
-    // Only run on the landing page (exactly https://courseweb.sliit.lk/ or with trailing slash/index)
-    // We want to avoid running on subpages like /my/ or /course/
+    // Run on landing page AND login page
     const path = window.location.pathname;
-    if (path !== '/' && path !== '/index.php') return;
+    if (path !== '/' && path !== '/index.php' && !path.includes('/login/index.php')) return;
 
     const data = await chrome.storage.local.get(STORAGE_KEYS.AUTO_LOGIN);
     if (!data[STORAGE_KEYS.AUTO_LOGIN]) return;
 
-    // Look for the login button
-    // Selector for Moodle login button on landing page
-    const loginBtn = document.querySelector('a[href*="login/index.php"]');
-    if (loginBtn) {
-      console.log('SLIIT Filter: Auto Login enabled. Clicking login button...');
-      loginBtn.click();
+    // 1. Try Specific OAuth Button (User provided)
+    // Selector based on the HTML snippet provided: <a class="btn login-identityprovider-btn ...">
+    const oauthBtn = document.querySelector('a[href*="auth/oauth2/login.php"]');
+    if (oauthBtn) {
+      console.log('SLIIT Filter: Found OAuth login button. Clicking...');
+      oauthBtn.click();
+      return;
+    }
+
+    // 2. Fallback: Try generic Login button (only if on landing page, to avoid loops on login page if OAuth is missing)
+    if (!path.includes('/login/index.php')) {
+      const loginBtn = document.querySelector('.login a[href*="login/index.php"]') ||
+        document.querySelector('.navbar .login a') ||
+        document.querySelector('a[href*="login/index.php"]');
+      if (loginBtn) {
+        console.log('SLIIT Filter: Found generic login button. Clicking...');
+        loginBtn.click();
+      }
     }
   };
 
