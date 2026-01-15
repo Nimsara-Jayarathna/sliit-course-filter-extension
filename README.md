@@ -72,9 +72,5 @@ We welcome contributions!
 This project was created purely for educational purposes and to explore the capabilities of modern browser extensions. It serves as a personal playground for customization and offers an alternative workflow for students who enjoy tweaking their digital environment.
 
 *This project is not officially affiliated with SLIIT.*
-To use this version, clone the `v1.0` tag:
-```bash
-git clone -b v1.0 https://github.com/Nimsara-Jayarathna/better-courseweb.git
-```
 
-*Note: The legacy version does not support fetching courses not already visible on the page.*
+---
