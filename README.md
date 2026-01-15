@@ -36,21 +36,28 @@ Need to study? Turn on Focus Mode to eliminate distractions.
 
 ## 🛠️ Installation Guide
 
-1.  **Download the Source:**
-    Clone the repository to your local machine:
-    ```bash
-    git clone https://github.com/Nimsara-Jayarathna/better-courseweb.git
-    ```
+### Choose Your Version
 
-2.  **Load into Browser (Chrome/Edge/Brave):**
-    -   Navigate to `chrome://extensions/`.
-    -   Toggle **Developer mode** in the top-right corner.
-    -   Click the **Load unpacked** button.
-    -   Select the `better-courseweb` folder you just cloned.
+You can choose between two versions of the extension depending on your preference:
 
-3.  **Pin & Configure:**
-    -   Pin the extension to your toolbar for easy access.
-    -   Open the popup to configure Auto Login and Focus Mode preferences.
+#### Option 1: Enhanced UI & Clean Experience (Recommended)
+Offers a more fluid, smooth UI for the menu and a cleaner LMS page interface.
+```bash
+git clone -b feature/moodle-new-workflow https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
+
+#### Option 2: Standard Version
+The normal version of the extension.
+```bash
+git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
+
+### Load as Unpacked Extension
+1.  Open Chrome and navigate to:
+    `chrome://extensions/`
+2.  Enable **Developer mode** (top-right corner).
+3.  Click **Load unpacked** and select the project folder (the one you just cloned).
+4.  Refesh SLIIT CourseWeb to see the changes!
 
 ---
 
@@ -71,3 +78,9 @@ We welcome contributions!
 This project was created purely for educational purposes and to explore the capabilities of modern browser extensions. It serves as a personal playground for customization and offers an alternative workflow for students who enjoy tweaking their digital environment.
 
 *This project is not officially affiliated with SLIIT.*
+To use this version, clone the `v1.0` tag:
+```bash
+git clone -b v1.0 https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
+```
+
+*Note: The legacy version does not support fetching courses not already visible on the page.*
