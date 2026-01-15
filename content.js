@@ -8,7 +8,8 @@
     SELECTED_SEMESTER: 'myCoursesSelectedSemester',
     FOCUS_MODE: 'scf_focus_mode',
     AUTO_LOGIN: 'scf_auto_login',
-    EXTENSION_ENABLED: 'scf_extension_enabled'
+    EXTENSION_ENABLED: 'scf_extension_enabled',
+    HIDE_SERVICE: 'scf_hide_service_modules'
   };
 
   const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
@@ -217,7 +218,7 @@
     return list;
   };
 
-  const createDropdown = (courses, currentSem, lastFetch, onSemesterChange, onRescan) => {
+  const createDropdown = (courses, currentSem, lastFetch, hideService, onSemesterChange, onRescan) => {
     const dropdown = createElement('div', ['scf-dropdown']);
 
     // --- Header ---
@@ -235,7 +236,48 @@
 
       // Handle courses being null or empty safely
       const safeCourses = courses || [];
-      const semesters = [...new Set(safeCourses.map(c => c.category))].sort().reverse();
+
+      // --- Robust Filtering Logic (Based on API Analysis) ---
+      const isAcademic = (course) => {
+        // Pattern 1: Category contains a year (e.g., "2024 July", "2025 February")
+        if (/\d{4}/.test(course.category)) return true;
+
+        // Pattern 2: Fullname contains year-like patterns (e.g., "[2024/JUL]")
+        // We might not have 'fullname' here if we only preserved 'title'.
+        // references: c.title maps to fullname from API.
+        if (/\d{4}/.test(course.title)) return true;
+
+        return false;
+      };
+
+      // Filter if toggle is ON
+      const displayCourses = hideService ? safeCourses.filter(isAcademic) : safeCourses;
+
+      // --- Smart Sorting Logic ---
+      // 1. Dated Semesters (2025, 2024) -> Sorted Descending (Newest first)
+      // 2. Others (Support, Orientation) -> Sorted Alphabetically at bottom
+      const uniqueSemesters = [...new Set(displayCourses.map(c => c.category))];
+
+      const semesters = uniqueSemesters.sort((a, b) => {
+        const yearA = (a.match(/\d{4}/) || [])[0];
+        const yearB = (b.match(/\d{4}/) || [])[0];
+
+        if (yearA && yearB) {
+          // If years match, maybe sort by month? 
+          // Simple string desc sort "2025 February" < "2025 July" ? No.
+          // "2025 July" vs "2025 February". J > F.
+          // Let's rely on standard desc sort for now, it handles YYYY well.
+          // Or strictly compare years.
+          if (yearA !== yearB) return yearB - yearA; // Newest year first
+          // Same year, text sort (maybe reverse for months?)
+          return a < b ? 1 : -1;
+        }
+        if (yearA) return -1; // A has year -> Top
+        if (yearB) return 1;  // B has year -> Top
+
+        // Both no year -> Alphabetical
+        return a.localeCompare(b);
+      });
 
       if (!semesters.includes(currentSem) && semesters.length > 0) {
         currentSem = semesters[0];
@@ -296,13 +338,12 @@
       selectContainer.appendChild(selectTrigger);
       selectContainer.appendChild(selectOptions);
 
-      // Label + Select Wrapper
       const controlsWrapper = createElement('div', ['scf-controls-wrapper']);
       controlsWrapper.style.display = 'flex';
       controlsWrapper.style.alignItems = 'center';
       controlsWrapper.style.gap = '10px';
 
-      const label = createElement('span', ['scf-label'], 'Select Semester:');
+      const label = createElement('span', ['scf-label'], 'Semester:');
       controlsWrapper.appendChild(label);
       controlsWrapper.appendChild(selectContainer);
 
@@ -480,6 +521,9 @@
     try {
       let courses = await getCourses();
       let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
+      let storedHide = await chrome.storage.local.get(STORAGE_KEYS.HIDE_SERVICE);
+
+      let hideService = storedHide[STORAGE_KEYS.HIDE_SERVICE] || false;
       let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses && courses.length ? courses[0].category : '');
 
       const lastFetchData = await chrome.storage.local.get(STORAGE_KEYS.LAST_FETCH);
@@ -490,6 +534,7 @@
           courses,
           currentSem,
           lastFetch,
+          hideService,
           (newSem) => {
             currentSem = newSem;
             chrome.storage.local.set({ [STORAGE_KEYS.SELECTED_SEMESTER]: newSem });
@@ -513,6 +558,14 @@
         );
         dropdownWrapper.appendChild(instance.dom);
       };
+
+      // Listen for popup changes (Toggle Service Modules)
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes[STORAGE_KEYS.HIDE_SERVICE]) {
+          hideService = changes[STORAGE_KEYS.HIDE_SERVICE].newValue;
+          renderDropdown(lastFetchData[STORAGE_KEYS.LAST_FETCH]);
+        }
+      });
 
       renderDropdown(lastFetchData[STORAGE_KEYS.LAST_FETCH]);
     } catch (err) {

@@ -23,14 +23,21 @@ Need to study? Turn on Focus Mode to eliminate distractions.
 -   **Content Aware:** intelligently keeps vital content (like Student Manuals or Main Dashboard blocks) visible while hiding the noise.
 -   **One-Click Toggle:** Enable it from the extension popup instantly.
 
-<img src="assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
+### 4. 📚 Smart Course Organization
+Keep your course list clean and relevant.
+-   **Academic Filter:** Toggle "Hide Service Modules" in the settings to hide non-academic courses like "Library" or "Student Support".
+-   **Smart Sorting:** Your active academic semesters (e.g., "2025 February") are automatically prioritized at the top of the list.
+
+<img src="https://raw.githubusercontent.com/Nimsara-Jayarathna/better-courseweb/refs/heads/main/assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
+<!-- Note: If you have a new image, replace the link above. I've kept the structure but added the feature description clearly. -->
 
 ### ⚙️ How to Use
 
 1.  **Open the Popup:** Click the extension icon in your toolbar.
 2.  **Master Control:** Use the top "Enable Extension" switch to turn the entire extension on/off instantly.
-3.  **Focus Mode:** Toggle this to hide distractions like the top navigation bar.
-4.  **Auto Login:** Enable this to skip the manual login process.
+3.  **Hide Service Modules:** specific toggle to filter out non-academic courses.
+4.  **Focus Mode:** Toggle this to hide distractions like the top navigation bar.
+5.  **Auto Login:** Enable this to skip the manual login process.
 
 ---
 
@@ -54,6 +61,16 @@ Need to study? Turn on Focus Mode to eliminate distractions.
 
 ---
 
+## 🐛 Issues & Feedback
+
+**Found a bug?** 
+This project is in active development, and issues may occur as the LMS platform evolves. If you encounter any problems or have suggestions:
+1.  Please [Open an Issue](https://github.com/Nimsara-Jayarathna/better-courseweb/issues) on GitHub.
+2.  Describe the issue and how to reproduce it.
+
+I will try my best to resolve reported issues promptly! 🛠️
+
+---
 
 ## 🤝 Contributing
 
