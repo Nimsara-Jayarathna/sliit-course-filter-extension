@@ -28,8 +28,8 @@ Keep your course list clean and relevant.
 -   **Academic Filter:** Toggle "Hide Service Modules" in the settings to hide non-academic courses like "Library" or "Student Support".
 -   **Smart Sorting:** Your active academic semesters (e.g., "2025 February") are automatically prioritized at the top of the list.
 
-<img src="https://raw.githubusercontent.com/Nimsara-Jayarathna/better-courseweb/refs/heads/main/assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
-<!-- Note: If you have a new image, replace the link above. I've kept the structure but added the feature description clearly. -->
+<img src="assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
+
 
 ### ⚙️ How to Use
 
