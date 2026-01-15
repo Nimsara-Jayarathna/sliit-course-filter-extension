@@ -1,51 +1,73 @@
-# ✨ SLIIT CourseWeb Extension - Enhanced UI Edition
+# 🎓 Better CourseWeb
 
-This is a special version of the SLIIT CourseWeb Extension focused on providing a **fluid, premium user experience** and a **cleaner, distraction-free LMS interface**.
-
-> 🚀 **Current Branch:** `feature/visual-smoothing`
+**Better CourseWeb** is a browser extension for [SLIIT CourseWeb](https://courseweb.sliit.lk/) that makes **course filtration** easy and intuitive. It also includes handy side features like auto-login and a distraction-free focus mode.
 
 ---
 
-## 🎨 Key Differences in This Version
+## 🚀 Features at a Glance
 
-Unlike the standard version, this edition introduces significant UI/UX improvements:
+### 1. 🔐 Intelligent Auto Login
+Say goodbye to repetitive login screens. Better CourseWeb automatically detects when you're logged out and handles the login flow for you.
+-   **OAuth Integrated:** Seamlessly clicks the "Continue with Microsoft" button.
+-   **Smart Detection:** If you land on the homepage logged out, the extension knows and prompts you immediately.
 
-### 1. 🌊 Fluid & Smooth Menu Animations
-The Global Navigation Menu opens and closes with smooth, high-frame-rate transitions. No more jarring pop-ins. The interactions feel native and polished.
+### 2. 🧭 Global Navigation Menu
+Access your courses from *any* page. No more going back to the dashboard just to switch subjects.
+-   **Dropdown Menu:** A convenient dropdown injected right into the navbar.
+-   **Semester Filtering:** Easily switch between current and past semesters.
+-   **Smart Caching:** Courses load instantly without waiting for the API every time.
 
-### 2. 🧹 Cleaned LMS Page Interface
-We don't just add a menu; we clean up the mess. This version actively removes:
--   Cluttered dashboard widgets.
--   Redundant banners and spacing.
--   Distracting elements from the course pages.
-Resulting in a **focused, minimalist learning environment**.
+### 3. 🎯 Focus Mode
+Need to study? Turn on Focus Mode to eliminate distractions.
+-   **Remove Clutter:** Hides top navigation bars, sidebars, and footer links.
+-   **Content Aware:** intelligently keeps vital content (like Student Manuals or Main Dashboard blocks) visible while hiding the noise.
+-   **One-Click Toggle:** Enable it from the extension popup instantly.
 
-### 3. 🛡️ Robust API Integration
-Like the main version, it uses the Moodle API to fetch all courses (hidden/past), but with optimized caching for smoother rendering matching the new UI animations.
+<img src="assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
 
----
+### ⚙️ How to Use
 
-## 📦 Installation (This Branch)
-
-To use this enhanced version, you must clone this specific branch:
-
-```bash
-git clone -b feature/visual-smoothing https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
-```
-
-### Setup Steps
-1.  **Clone** the repo using the command above.
-2.  Open Chrome and go to `chrome://extensions/`.
-3.  Enable **Developer mode**.
-4.  Click **Load unpacked**.
-5.  Select the `sliit-course-filter-extension` folder.
-6.  Refresh CourseWeb and enjoy the smooth new look! 🌊
+1.  **Open the Popup:** Click the extension icon in your toolbar.
+2.  **Master Control:** Use the top "Enable Extension" switch to turn the entire extension on/off instantly.
+3.  **Focus Mode:** Toggle this to hide distractions like the top navigation bar.
+4.  **Auto Login:** Enable this to skip the manual login process.
 
 ---
 
-## 🔄 Returning to Standard Version
+## 🛠️ Installation Guide
 
-If you prefer the standard utility without the UI overrides:
-```bash
-git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
-```
+1.  **Download the Source:**
+    Clone the repository to your local machine:
+    ```bash
+    git clone https://github.com/Nimsara-Jayarathna/better-courseweb.git
+    ```
+
+2.  **Load into Browser (Chrome/Edge/Brave):**
+    -   Navigate to `chrome://extensions/`.
+    -   Toggle **Developer mode** in the top-right corner.
+    -   Click the **Load unpacked** button.
+    -   Select the `better-courseweb` folder you just cloned.
+
+3.  **Pin & Configure:**
+    -   Pin the extension to your toolbar for easy access.
+    -   Open the popup to configure Auto Login and Focus Mode preferences.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions!
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
+
+---
+
+## ⚖️ Disclaimer
+
+**Just for Fun!** ✌️
+This project was created purely for educational purposes and to explore the capabilities of modern browser extensions. It serves as a personal playground for customization and offers an alternative workflow for students who enjoy tweaking their digital environment.
+
+*This project is not officially affiliated with SLIIT.*

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "My Courses",
+  "name": "Better CourseWeb",
   "version": "2.0",
   "action": {
     "default_popup": "popup.html"
