@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLIIT Filter Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="icons/icon48.png" alt="Logo" class="logo">
+      <h1>My Courses</h1>
+    </div>
+
+    <div class="settings-list">
+      
+      <!-- Auto Login -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Auto Login</span>
+          <span class="setting-desc">Automatically log in on landing page</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoLogin">
+          <div class="slider"></div>
+        </label>
+      </div>
+
+      <!-- Focus Mode -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Focus Mode</span>
+          <span class="setting-desc">Hide extra navigation items</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="focusMode">
+          <div class="slider"></div>
+        </label>
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <a href="#" id="openExtensions">Manage Extensions</a>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

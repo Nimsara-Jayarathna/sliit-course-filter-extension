@@ -6,7 +6,8 @@
     COURSES_CACHE: 'myCoursesCache',
     LAST_FETCH: 'myCoursesLastFetch',
     SELECTED_SEMESTER: 'myCoursesSelectedSemester',
-    FOCUS_MODE: 'scf_focus_mode'
+    FOCUS_MODE: 'scf_focus_mode',
+    AUTO_LOGIN: 'scf_auto_login'
   };
 
   const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
@@ -425,64 +426,57 @@
   setTimeout(closeRightDrawer, 1500);
   setTimeout(closeRightDrawer, 3000);
 
-  const injectFocusToggle = async () => {
-    if (document.getElementById('scf-focus-toggle')) return;
+  // --- Auto Login Logic ---
+  const checkAndAutoLogin = async () => {
+    // Only run on the landing page (exactly https://courseweb.sliit.lk/ or with trailing slash/index)
+    // We want to avoid running on subpages like /my/ or /course/
+    const path = window.location.pathname;
+    if (path !== '/' && path !== '/index.php') return;
 
-    const navContainer = document.querySelector('nav .primary-navigation .more-nav') ||
-      document.querySelector('.primary-navigation') ||
-      document.querySelector('.navbar-nav');
+    const data = await chrome.storage.local.get(STORAGE_KEYS.AUTO_LOGIN);
+    if (!data[STORAGE_KEYS.AUTO_LOGIN]) return;
 
-    if (!navContainer) return;
-
-    // Fetch state
-    const focusData = await chrome.storage.local.get(STORAGE_KEYS.FOCUS_MODE);
-    let isFocusMode = focusData[STORAGE_KEYS.FOCUS_MODE] || false;
-    if (isFocusMode) document.body.classList.add('scf-focus-enabled');
-
-    const toggleItem = createElement('li', ['nav-item', 'scf-nav-item', 'scf-focus-item']);
-    toggleItem.id = 'scf-focus-toggle';
-
-    // Toggle UI
-    const wrapper = createElement('label', ['scf-focus-wrapper']);
-    wrapper.title = "Toggle Focus Mode";
-    // Slightly different style for navbar: no text label, just icon/switch?
-    // Title says "toogle button". I'll use the same switch style but maybe adapt colors.
-
-    const checkbox = createElement('input', ['scf-focus-checkbox']);
-    checkbox.type = 'checkbox';
-    checkbox.checked = isFocusMode;
-
-    const slider = createElement('div', ['scf-focus-slider']);
-    // Add text label if space permits, or tooltip.
-    // User said "after all the lable are placed".
-
-    wrapper.appendChild(checkbox);
-    wrapper.appendChild(slider);
-
-    toggleItem.appendChild(wrapper);
-
-    // Event
-    checkbox.addEventListener('change', (e) => {
-      const enabled = e.target.checked;
-      if (enabled) {
-        document.body.classList.add('scf-focus-enabled');
-      } else {
-        document.body.classList.remove('scf-focus-enabled');
-      }
-      chrome.storage.local.set({ [STORAGE_KEYS.FOCUS_MODE]: enabled });
-    });
-
-    navContainer.appendChild(toggleItem);
+    // Look for the login button
+    // Selector for Moodle login button on landing page
+    const loginBtn = document.querySelector('a[href*="login/index.php"]');
+    if (loginBtn) {
+      console.log('SLIIT Filter: Auto Login enabled. Clicking login button...');
+      loginBtn.click();
+    }
   };
 
-  // Run injectFocusToggle
-  injectFocusToggle();
-  // Also observe? 
-  const focusObserver = new MutationObserver(() => {
-    if (document.querySelector('nav') && !document.getElementById('scf-focus-toggle')) {
-      injectFocusToggle();
+  // Run Auto Login check immediately
+  checkAndAutoLogin();
+
+  // --- Focus Mode Logic (Listener based) ---
+  const applyFocusMode = (params) => { // enabled can be boolean or object from storage
+    // If called from storage listener, it might be { newValue: true/false }
+    // If called from init, it's just value.
+    // Let's re-read just to be safe or parse arg.
+  };
+
+  const updateFocusMode = (enabled) => {
+    if (enabled) {
+      document.body.classList.add('scf-focus-enabled');
+    } else {
+      document.body.classList.remove('scf-focus-enabled');
+    }
+  };
+
+  // Initial Load of Focus Mode
+  chrome.storage.local.get(STORAGE_KEYS.FOCUS_MODE, (data) => {
+    updateFocusMode(data[STORAGE_KEYS.FOCUS_MODE] || false);
+  });
+
+  // Listen for changes from Popup
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local') {
+      if (changes[STORAGE_KEYS.FOCUS_MODE]) {
+        updateFocusMode(changes[STORAGE_KEYS.FOCUS_MODE].newValue);
+      }
+      // Note: Auto Login changes don't need immediate reaction on this page, 
+      // they apply on next reload/visit to landing page.
     }
   });
-  focusObserver.observe(document.body, { childList: true, subtree: true });
 
 })();
