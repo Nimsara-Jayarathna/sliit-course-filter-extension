@@ -1,34 +1,40 @@
-# 🎓 SLIIT CourseWeb Navbar Extension
+# 🎓 Better CourseWeb
 
-A powerful Chrome extension that completely upgrades the navigation experience on [courseweb.sliit.lk](https://courseweb.sliit.lk/). 
-
-It replaces the default, limited "My courses" logic with a **Global Navigation Menu** that fetches *all* your courses (even hidden or past ones) via the Moodle API and organizes them nicely by semester.
+**Better CourseWeb** is a browser extension for [SLIIT CourseWeb](https://courseweb.sliit.lk/) that makes **course filtration** easy and intuitive. It also includes handy side features like auto-login and a distraction-free focus mode.
 
 ---
 
-## 🚀 Why the Change?
+## 🚀 Features at a Glance
 
-Recently, **SLIIT CourseWeb underwent a major UI overhaul**, which changed the underlying structure of the website. This update unfortunately **broke the logic of the previous extension**, which relied on scraping the "My courses" dropdown from the page DOM.
+### 1. 🔐 Intelligent Auto Login
+Say goodbye to repetitive login screens. Better CourseWeb automatically detects when you're logged out and handles the login flow for you.
+-   **OAuth Integrated:** Seamlessly clicks the "Continue with Microsoft" button.
+-   **Smart Detection:** If you land on the homepage logged out, the extension knows and prompts you immediately.
 
-**This major update (v2.0) introduces a complete refactor to fix this:**
-1.  **API-First Approach**: Instead of relying on the fragile page structure, we now fetch course data directly from Moodle's API. This makes the extension **immune to future UI changes**.
-2.  **Global Accessibility**: The menu is injected into the global top navigation bar, so you can access your courses from *any* page.
-3.  **Cleaner UI**: We strip redundant clutter (like semester tags in names) and provide a focused, semester-based view.
+### 2. 🧭 Global Navigation Menu
+Access your courses from *any* page. No more going back to the dashboard just to switch subjects.
+-   **Dropdown Menu:** A convenient dropdown injected right into the navbar.
+-   **Semester Filtering:** Easily switch between current and past semesters.
+-   **Smart Caching:** Courses load instantly without waiting for the API every time.
+
+### 3. 🎯 Focus Mode
+Need to study? Turn on Focus Mode to eliminate distractions.
+-   **Remove Clutter:** Hides top navigation bars, sidebars, and footer links.
+-   **Content Aware:** intelligently keeps vital content (like Student Manuals or Main Dashboard blocks) visible while hiding the noise.
+-   **One-Click Toggle:** Enable it from the extension popup instantly.
+
+<img src="assets/popup_ui_annotated.png" alt="Extension Settings UI" width="300" />
+
+### ⚙️ How to Use
+
+1.  **Open the Popup:** Click the extension icon in your toolbar.
+2.  **Master Control:** Use the top "Enable Extension" switch to turn the entire extension on/off instantly.
+3.  **Focus Mode:** Toggle this to hide distractions like the top navigation bar.
+4.  **Auto Login:** Enable this to skip the manual login process.
 
 ---
 
-## ✨ Features
-
-- **📚 Global Semester Menu**: A new "Semester" dropdown in the top navbar.
-- **🔍 Smart Filtering**: Automatically groups courses by semester.
-- **🧹 Clean Course Names**: Removes clutter like `[2024 JAN - JUN]` from course titles for a readable list.
-- **🔄 Auto-Retry**: Robust fetching with auto-retry logic to handle network bumps.
-- **⚡ Fast Access**: Caches your course list locally for instant loading.
-- **🔗 My Courses Shortcut**: Adds a quick "Go to My Courses" link in the footer of the menu.
-
----
-
-## 📦 Installation
+## 🛠️ Installation Guide
 
 ### Choose Your Version
 
@@ -55,12 +61,23 @@ git clone https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.gi
 
 ---
 
-## 🏛️ Legacy Version
+## 🤝 Contributing
 
-If you prefer the old behavior (which simply filtered the existing list without API calls), you can access the legacy version here:
+We welcome contributions!
+1.  Fork the repository.
+2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-[**View Legacy Version (v1.0)**](https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension/commits/v1.0)
+---
 
+## ⚖️ Disclaimer
+
+**Just for Fun!** ✌️
+This project was created purely for educational purposes and to explore the capabilities of modern browser extensions. It serves as a personal playground for customization and offers an alternative workflow for students who enjoy tweaking their digital environment.
+
+*This project is not officially affiliated with SLIIT.*
 To use this version, clone the `v1.0` tag:
 ```bash
 git clone -b v1.0 https://github.com/Nimsara-Jayarathna/sliit-course-filter-extension.git
