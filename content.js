@@ -35,12 +35,34 @@
     return null;
   };
 
+  const isLoggedIn = () => {
+    // Check for specific login button presence (strong indicator of logged out)
+    if (document.querySelector('a[href*="login/index.php"]') || document.querySelector('a[href*="auth/oauth2/login.php"]')) {
+      return false;
+    }
+
+    // Check for logout link / sesskey (strong indicator of logged in)
+    if (getSesskey()) return true;
+
+    // Fallback: If on login page, definitely not logged in (unless already handled above)
+    const path = window.location.pathname;
+    if (path.includes('/login/')) return false;
+
+    // Default to false to be safe
+    return false;
+  };
+
   // --- Data Fetching (API) ---
   const fetchCoursesFromAPI = async () => {
+    if (!isLoggedIn()) {
+      console.log('SLIIT Filter: User is not logged in. Skipping API fetch.');
+      return null; // Return null to indicate auth required
+    }
+
     const sesskey = getSesskey();
     if (!sesskey) {
       console.warn('SLIIT Filter: Sesskey not found. Cannot fetch courses via API.');
-      return [];
+      return null;
     }
 
     const payload = [{
@@ -94,7 +116,7 @@
         console.warn(`SLIIT Filter: API Fetch attempt ${attempt} failed`, err);
         if (attempt === 3) {
           console.error('SLIIT Filter: All API Fetch attempts failed', err);
-          return [];
+          return []; // Return empty on error, not null (unless auth error)
         }
         // Exponential backoff
         await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -109,6 +131,13 @@
   };
 
   const getCourses = async (forceRefresh = false) => {
+    // Security/State Check: If logged out, clear cache and enforce login.
+    if (!isLoggedIn()) {
+      console.log('SLIIT Filter: Detected logged out state. Clearing cache.');
+      await chrome.storage.local.remove([STORAGE_KEYS.COURSES_CACHE, STORAGE_KEYS.LAST_FETCH]);
+      return null;
+    }
+
     const data = await chrome.storage.local.get([STORAGE_KEYS.COURSES_CACHE, STORAGE_KEYS.LAST_FETCH]);
     const cache = data[STORAGE_KEYS.COURSES_CACHE];
     const lastFetch = data[STORAGE_KEYS.LAST_FETCH];
@@ -120,8 +149,53 @@
   };
 
   // --- UI Components ---
+  const performLogin = () => {
+    // Reuse logic from checkAndAutoLogin
+    const oauthBtn = document.querySelector('a[href*="auth/oauth2/login.php"]');
+    if (oauthBtn) {
+      oauthBtn.click();
+      return;
+    }
+    const loginBtn = document.querySelector('.login a[href*="login/index.php"]') ||
+      document.querySelector('.navbar .login a') ||
+      document.querySelector('a[href*="login/index.php"]');
+    if (loginBtn) loginBtn.click();
+  };
+
   const createCourseList = (courses, targetCategory) => {
     const list = createElement('div', ['scf-course-list']);
+
+    // Check for "Not Logged In" state (courses === null)
+    if (courses === null) {
+      list.innerHTML = `
+            <div class="scf-empty" style="text-align: center; padding: 20px;">
+                <div style="margin-bottom: 10px; color: #666;">Please log in to view courses</div>
+                <button class="scf-btn scf-btn-primary" id="scf-manual-login-btn">Log In</button>
+            </div>
+        `;
+      // We need to attach event listener after insertion, or create element via DOM
+      // Simpler to create DOM elements
+      list.innerHTML = '';
+      const emptyDiv = createElement('div', ['scf-empty']);
+      emptyDiv.style.textAlign = 'center';
+      emptyDiv.style.padding = '20px';
+
+      const msg = createElement('div', [], 'Please log in to view courses');
+      msg.style.marginBottom = '10px';
+      msg.style.color = '#666';
+
+      const loginBtn = createElement('button', ['scf-btn', 'scf-btn-primary'], 'Log In');
+      loginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        performLogin();
+      });
+
+      emptyDiv.appendChild(msg);
+      emptyDiv.appendChild(loginBtn);
+      list.appendChild(emptyDiv);
+
+      return list;
+    }
 
     const filtered = courses.filter(c => c.category === targetCategory || targetCategory === 'All');
 
@@ -147,94 +221,95 @@
     const dropdown = createElement('div', ['scf-dropdown']);
 
     // --- Header ---
-    const header = createElement('div', ['scf-dropdown-header']);
-    header.style.flexDirection = 'column';
-    header.style.gap = '8px';
+    if (courses !== null) {
+      const header = createElement('div', ['scf-dropdown-header']);
+      header.style.flexDirection = 'column';
+      header.style.gap = '8px';
 
-    // Header Row 1: Label + Select (Inline)
-    const headerRow = createElement('div', ['scf-header-row']);
-    headerRow.style.display = 'flex';
-    headerRow.style.justifyContent = 'space-between';
-    headerRow.style.alignItems = 'center';
-    headerRow.style.width = '100%';
+      // Header Row 1: Label + Select (Inline)
+      const headerRow = createElement('div', ['scf-header-row']);
+      headerRow.style.display = 'flex';
+      headerRow.style.justifyContent = 'space-between';
+      headerRow.style.alignItems = 'center';
+      headerRow.style.width = '100%';
 
-    const semesters = [...new Set(courses.map(c => c.category))].sort().reverse();
+      // Handle courses being null or empty safely
+      const safeCourses = courses || [];
+      const semesters = [...new Set(safeCourses.map(c => c.category))].sort().reverse();
 
-    if (!semesters.includes(currentSem) && semesters.length > 0) {
-      currentSem = semesters[0];
-      onSemesterChange(currentSem); // Auto-correct
-    }
+      if (!semesters.includes(currentSem) && semesters.length > 0) {
+        currentSem = semesters[0];
+        onSemesterChange(currentSem); // Auto-correct
+      }
 
-    // --- Custom Select Implementation ---
-    const selectContainer = createElement('div', ['scf-custom-select']);
-    const selectTrigger = createElement('div', ['scf-select-trigger']);
-    selectTrigger.innerHTML = `<span>${currentSem || 'Select Semester'}</span><div class="scf-arrow"></div>`;
+      // --- Custom Select Implementation ---
+      const selectContainer = createElement('div', ['scf-custom-select']);
+      const selectTrigger = createElement('div', ['scf-select-trigger']);
+      selectTrigger.innerHTML = `<span>${currentSem || 'Select Semester'}</span><div class="scf-arrow"></div>`;
 
-    const selectOptions = createElement('div', ['scf-select-options']);
+      const selectOptions = createElement('div', ['scf-select-options']);
 
-    semesters.forEach(s => {
-      const option = createElement('div', ['scf-select-option'], s);
-      if (s === currentSem) option.classList.add('selected');
+      semesters.forEach(s => {
+        const option = createElement('div', ['scf-select-option'], s);
+        if (s === currentSem) option.classList.add('selected');
 
-      option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Update UI
-        selectTrigger.querySelector('span').textContent = s;
-        selectOptions.querySelectorAll('.scf-select-option').forEach(el => el.classList.remove('selected'));
-        option.classList.add('selected');
-        selectOptions.classList.remove('open');
-        selectTrigger.classList.remove('active');
+        option.addEventListener('click', (e) => {
+          e.stopPropagation();
+          // Update UI
+          selectTrigger.querySelector('span').textContent = s;
+          selectOptions.querySelectorAll('.scf-select-option').forEach(el => el.classList.remove('selected'));
+          option.classList.add('selected');
+          selectOptions.classList.remove('open');
+          selectTrigger.classList.remove('active');
 
-        // Callback
-        onSemesterChange(s);
+          // Callback
+          onSemesterChange(s);
+        });
+        selectOptions.appendChild(option);
       });
-      selectOptions.appendChild(option);
-    });
 
-    // Toggle logic
-    selectTrigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = selectOptions.classList.contains('open');
-      // Close others if any (not strictly needed here as we only have one, but good practice)
-      document.querySelectorAll('.scf-select-options').forEach(el => el.classList.remove('open'));
+      // Toggle logic
+      selectTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (semesters.length === 0) return;
 
-      if (!isOpen) {
-        selectOptions.classList.add('open');
-        selectTrigger.classList.add('active');
-      } else {
-        selectOptions.classList.remove('open');
-        selectTrigger.classList.remove('active');
-      }
-    });
+        const isOpen = selectOptions.classList.contains('open');
+        document.querySelectorAll('.scf-select-options').forEach(el => el.classList.remove('open'));
 
-    // Close on click outside
-    document.addEventListener('click', (e) => {
-      if (!selectContainer.contains(e.target)) {
-        selectOptions.classList.remove('open');
-        selectTrigger.classList.remove('active');
-      }
-    });
+        if (!isOpen) {
+          selectOptions.classList.add('open');
+          selectTrigger.classList.add('active');
+        } else {
+          selectOptions.classList.remove('open');
+          selectTrigger.classList.remove('active');
+        }
+      });
 
-    selectContainer.appendChild(selectTrigger);
-    selectContainer.appendChild(selectOptions);
-    // ------------------------------------
+      // Close on click outside
+      document.addEventListener('click', (e) => {
+        if (!selectContainer.contains(e.target)) {
+          selectOptions.classList.remove('open');
+          selectTrigger.classList.remove('active');
+        }
+      });
 
-    // Label + Select Wrapper -- replacing direct append
-    const controlsWrapper = createElement('div', ['scf-controls-wrapper']);
-    controlsWrapper.style.display = 'flex';
-    controlsWrapper.style.alignItems = 'center';
-    controlsWrapper.style.gap = '10px';
+      selectContainer.appendChild(selectTrigger);
+      selectContainer.appendChild(selectOptions);
 
-    // Label moved inside wrapper
-    const label = createElement('span', ['scf-label'], 'Select Semester:');
-    controlsWrapper.appendChild(label);
-    controlsWrapper.appendChild(selectContainer);
+      // Label + Select Wrapper
+      const controlsWrapper = createElement('div', ['scf-controls-wrapper']);
+      controlsWrapper.style.display = 'flex';
+      controlsWrapper.style.alignItems = 'center';
+      controlsWrapper.style.gap = '10px';
 
-    headerRow.appendChild(controlsWrapper);
-    header.appendChild(headerRow);
-    dropdown.appendChild(header);
+      const label = createElement('span', ['scf-label'], 'Select Semester:');
+      controlsWrapper.appendChild(label);
+      controlsWrapper.appendChild(selectContainer);
 
-    dropdown.appendChild(header);
+      headerRow.appendChild(controlsWrapper);
+      header.appendChild(headerRow);
+      dropdown.appendChild(header);
+    }
 
     // Body
     const body = createElement('div', ['scf-dropdown-body']);
@@ -242,38 +317,37 @@
     dropdown.appendChild(body);
 
     // --- Footer ---
-    const footer = createElement('div', ['scf-dropdown-footer']);
+    if (courses !== null) {
+      const footer = createElement('div', ['scf-dropdown-footer']);
 
-    // Left: Primary Action
-    const myCoursesBtn = createElement('a', ['scf-btn', 'scf-btn-primary'], 'Go to My Courses');
-    myCoursesBtn.href = '/my/courses.php';
+      // Left: Primary Action
+      const isLanding = window.location.pathname === '/' || window.location.pathname === '/index.php';
+      if (!isLanding) {
+        const myCoursesBtn = createElement('a', ['scf-btn', 'scf-btn-primary'], 'Go to My Courses');
+        myCoursesBtn.href = '/my/courses.php';
+        footer.appendChild(myCoursesBtn);
+      }
 
-    // Right: Secondary Action + Timestamp
-    const rightActions = createElement('div', ['scf-footer-right']);
+      // Right: Secondary Action + Timestamp
+      const rightActions = createElement('div', ['scf-footer-right']);
 
-    // Timestamp logic
-    let lastFetchedTime = 'Just now';
-    if (lastFetch) {
-      const diffMins = Math.floor((Date.now() - lastFetch) / 60000);
-      lastFetchedTime = diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
+      // Timestamp logic
+      let lastFetchedTime = 'Just now';
+      if (lastFetch) {
+        const diffMins = Math.floor((Date.now() - lastFetch) / 60000);
+        lastFetchedTime = diffMins < 1 ? 'Just now' : `${diffMins}m ago`;
+      }
+
+      const refreshBtn = createElement('button', ['scf-btn', 'scf-btn-secondary'], '↻ Rescan');
+      refreshBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onRescan();
+      });
+      rightActions.appendChild(refreshBtn);
+
+      footer.appendChild(rightActions);
+      dropdown.appendChild(footer);
     }
-    // const timestamp = createElement('span', ['scf-timestamp'], `Synced: ${lastFetchedTime}`); 
-    // Commented out timestamp to save space if needed, or keep it? 
-    // User didn't ask to remove it, but complained about clutter. Let's keep it small.
-    // Actually user said "just keep the Semester label only" regarding navbar, not footer. 
-    // I will keep timestamp but maybe simpler.
-
-    const refreshBtn = createElement('button', ['scf-btn', 'scf-btn-secondary'], '↻ Rescan');
-    refreshBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onRescan();
-    });
-
-    rightActions.appendChild(refreshBtn);
-
-    footer.appendChild(myCoursesBtn);
-    footer.appendChild(rightActions);
-    dropdown.appendChild(footer);
 
     return {
       dom: dropdown, updateBody: (newSem) => {
@@ -281,6 +355,74 @@
         body.appendChild(createCourseList(courses, newSem));
       }
     };
+  };
+
+  const createSkeletonDropdown = () => {
+    const dropdown = createElement('div', ['scf-dropdown']);
+
+    // --- Header ---
+    const header = createElement('div', ['scf-dropdown-header']);
+    const headerRow = createElement('div', ['scf-header-row']);
+    headerRow.style.display = 'flex';
+    headerRow.style.justifyContent = 'space-between';
+    headerRow.style.alignItems = 'center';
+    headerRow.style.width = '100%';
+
+    const controlsWrapper = createElement('div', ['scf-controls-wrapper']);
+    controlsWrapper.style.display = 'flex';
+    controlsWrapper.style.alignItems = 'center';
+    controlsWrapper.style.gap = '10px';
+
+    const label = createElement('span', ['scf-label'], 'Select Semester:');
+
+    // Skeleton Select
+    const selectTrigger = createElement('div', ['scf-select-trigger']);
+    selectTrigger.innerHTML = `<span>Loading...</span><div class="scf-arrow"></div>`;
+    selectTrigger.style.opacity = '0.7';
+    selectTrigger.style.pointerEvents = 'none';
+
+    controlsWrapper.appendChild(label);
+    controlsWrapper.appendChild(selectTrigger);
+    headerRow.appendChild(controlsWrapper);
+    header.appendChild(headerRow);
+    dropdown.appendChild(header);
+
+    // --- Body ---
+    const body = createElement('div', ['scf-dropdown-body']);
+    body.style.display = 'flex';
+    body.style.justifyContent = 'center';
+    body.style.alignItems = 'center';
+    body.style.height = '150px';
+
+    const spinner = createElement('div', ['scf-loading-spinner']);
+    // Reuse the CSS spinner logic by adding a class or just HTML
+    // We used .scf-dropdown-wrapper.loading::after for the spinner before.
+    // Let's make an explicit internal spinner
+    spinner.innerHTML = `<div style="
+        width: 30px; 
+        height: 30px; 
+        border: 3px solid rgba(15, 108, 191, 0.2); 
+        border-top-color: #0f6cbf; 
+        border-radius: 50%; 
+        animation: scf-spin 1s linear infinite;"></div>`;
+
+    body.appendChild(spinner);
+    dropdown.appendChild(body);
+
+    // --- Footer ---
+    const footer = createElement('div', ['scf-dropdown-footer']);
+
+    // User logic: Hide "Go to My Courses" if on landing page OR logged out
+    const isLanding = window.location.pathname === '/' || window.location.pathname === '/index.php';
+    if (!isLanding && isLoggedIn()) {
+      const myCoursesBtn = createElement('a', ['scf-btn', 'scf-btn-primary'], 'Go to My Courses');
+      myCoursesBtn.href = '/my/courses.php';
+      footer.appendChild(myCoursesBtn);
+    }
+
+    dropdown.appendChild(footer);
+
+    return dropdown;
   };
 
   const injectNavbarItem = async () => {
@@ -305,9 +447,10 @@
 
     // Wrapper
     const dropdownWrapper = createElement('div', ['scf-dropdown-wrapper']);
-    const loadingEl = createElement('div', ['scf-loading'], 'Loading...');
-    loadingEl.style.padding = '10px';
-    dropdownWrapper.appendChild(loadingEl);
+
+    // Inject Skeleton immediately
+    dropdownWrapper.appendChild(createSkeletonDropdown());
+
     navItem.appendChild(dropdownWrapper);
 
     // Insert Logic: Try to be 2nd or 3rd item
@@ -337,7 +480,7 @@
     try {
       let courses = await getCourses();
       let storedSem = await chrome.storage.local.get(STORAGE_KEYS.SELECTED_SEMESTER);
-      let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses.length ? courses[0].category : '');
+      let currentSem = storedSem[STORAGE_KEYS.SELECTED_SEMESTER] || (courses && courses.length ? courses[0].category : '');
 
       const lastFetchData = await chrome.storage.local.get(STORAGE_KEYS.LAST_FETCH);
 
@@ -353,10 +496,18 @@
             instance.updateBody(newSem);
           },
           async () => {
-            dropdownWrapper.classList.add('loading');
+            // Show skeleton or loading state on refresh?
+            // Existing logic uses .loading class. Let's stick to that for refresh, 
+            // BUT simpler to just swap content if we want consistent UI.
+            // Let's use the skeleton for Rescan too?
+
+            // "rescan" usually is fast, but if we want consistency:
+            dropdownWrapper.innerHTML = '';
+            dropdownWrapper.appendChild(createSkeletonDropdown());
+
             courses = await getCourses(true);
             const refetchedData = await chrome.storage.local.get(STORAGE_KEYS.LAST_FETCH);
-            dropdownWrapper.classList.remove('loading');
+
             renderDropdown(refetchedData[STORAGE_KEYS.LAST_FETCH]);
           }
         );
@@ -366,7 +517,11 @@
       renderDropdown(lastFetchData[STORAGE_KEYS.LAST_FETCH]);
     } catch (err) {
       console.error('SLIIT Filter: Failed to initialize navbar item', err);
-      dropdownWrapper.innerHTML = '<div style="padding:10px; color:red;">Failed to load</div>';
+      // Show error in the dropdown format
+      dropdownWrapper.innerHTML = '';
+      const errDropdown = createSkeletonDropdown();
+      errDropdown.querySelector('.scf-dropdown-body').innerHTML = '<div style="color:red; padding:20px; text-align:center;">Failed to load courses.</div>';
+      dropdownWrapper.appendChild(errDropdown);
     }
   };
 
