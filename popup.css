@@ -1,8 +1,10 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f8f9fa; /* SLIIT/Moodle light gray */
-  color: #333;
+  background-color: #202124;
+  /* Dark Background */
+  color: #e8eaed;
+  /* Light Text */
   width: 300px;
 }
 
@@ -16,7 +18,7 @@ body {
   gap: 12px;
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #3c4043;
 }
 
 .logo {
@@ -28,7 +30,8 @@ h1 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #0f6cbf; /* SLIIT Blue */
+  color: #8ab4f8;
+  /* Lighter Blue */
 }
 
 .settings-list {
@@ -56,7 +59,8 @@ h1 {
 
 .setting-desc {
   font-size: 11px;
-  color: #666;
+  color: #9aa0a6;
+  /* Muted Text */
 }
 
 /* Toggle Switch */
@@ -79,7 +83,7 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: #5f6368;
   transition: .3s;
   border-radius: 20px;
 }
@@ -91,37 +95,44 @@ h1 {
   width: 16px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
+  background-color: #202124;
   transition: .3s;
   border-radius: 50%;
 }
 
-input:checked + .slider {
-  background-color: #0f6cbf;
+input:checked+.slider {
+  background-color: #8ab4f8;
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   transform: translateX(16px);
+  background-color: #202124;
 }
 
-input:focus + .slider {
-  box-shadow: 0 0 1px #0f6cbf;
+input:focus+.slider {
+  box-shadow: 0 0 1px #8ab4f8;
+}
+
+/* Disable state for sub-controls if master is off */
+body.disabled .setting-item:not(:first-child) {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .footer {
   margin-top: 24px;
   padding-top: 12px;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid #3c4043;
   text-align: center;
 }
 
 .footer a {
   font-size: 11px;
-  color: #888;
+  color: #9aa0a6;
   text-decoration: none;
 }
 
 .footer a:hover {
   text-decoration: underline;
-  color: #0f6cbf;
+  color: #8ab4f8;
 }

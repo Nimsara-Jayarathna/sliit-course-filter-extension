@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SLIIT Filter Settings</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -14,7 +16,19 @@
     </div>
 
     <div class="settings-list">
-      
+
+      <!-- Master Switch -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Enable Extension</span>
+          <span class="setting-desc">Turn off to restore default view</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="extensionEnabled">
+          <div class="slider"></div>
+        </label>
+      </div>
+
       <!-- Auto Login -->
       <div class="setting-item">
         <div class="setting-info">
@@ -47,4 +61,5 @@
   </div>
   <script src="popup.js"></script>
 </body>
+
 </html>

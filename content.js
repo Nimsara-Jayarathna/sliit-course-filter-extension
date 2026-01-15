@@ -7,7 +7,8 @@
     LAST_FETCH: 'myCoursesLastFetch',
     SELECTED_SEMESTER: 'myCoursesSelectedSemester',
     FOCUS_MODE: 'scf_focus_mode',
-    AUTO_LOGIN: 'scf_auto_login'
+    AUTO_LOGIN: 'scf_auto_login',
+    EXTENSION_ENABLED: 'scf_extension_enabled'
   };
 
   const CACHE_DURATION = 1000 * 60 * 60; // 1 hour cache (API is reliable)
@@ -368,17 +369,6 @@
     }
   };
 
-  // Observer
-  const observer = new MutationObserver(() => {
-    if (document.querySelector('nav') && !document.getElementById('scf-navbar-item')) {
-      injectNavbarItem();
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // Initial run
-  injectNavbarItem();
-
   // Hide original "My courses" link
   // We run this periodically or just once? Moodle might re-render. 
   // Let's add it to the observer or a specific interval check if simple css isn't enough.
@@ -391,11 +381,6 @@
       }
     });
   };
-
-  // Run immediately and also observe
-  hideOriginalMyCourses();
-  const hideObserver = new MutationObserver(hideOriginalMyCourses);
-  hideObserver.observe(document.body, { childList: true, subtree: true });
 
   // Auto-close Right Drawer (Profile/Block Drawer)
   const closeRightDrawer = () => {
@@ -421,11 +406,6 @@
     }
   };
 
-  // Check a few times in case of lazy loading
-  setTimeout(closeRightDrawer, 500);
-  setTimeout(closeRightDrawer, 1500);
-  setTimeout(closeRightDrawer, 3000);
-
   // --- Auto Login Logic ---
   const checkAndAutoLogin = async () => {
     // Only run on the landing page (exactly https://courseweb.sliit.lk/ or with trailing slash/index)
@@ -445,9 +425,6 @@
     }
   };
 
-  // Run Auto Login check immediately
-  checkAndAutoLogin();
-
   // --- Focus Mode Logic (Listener based) ---
   const applyFocusMode = (params) => { // enabled can be boolean or object from storage
     // If called from storage listener, it might be { newValue: true/false }
@@ -463,19 +440,100 @@
     }
   };
 
-  // Initial Load of Focus Mode
-  chrome.storage.local.get(STORAGE_KEYS.FOCUS_MODE, (data) => {
-    updateFocusMode(data[STORAGE_KEYS.FOCUS_MODE] || false);
-  });
+  // --- Master Control & Initialization ---
 
-  // Listen for changes from Popup
+  let observers = []; // To track observers for cleanup
+
+  const teardown = () => {
+    console.log('SLIIT Filter: Disabling extension...');
+
+    // Remove Navbar Item
+    const navItem = document.getElementById('scf-navbar-item');
+    if (navItem) navItem.remove();
+
+    // Remove Focus Toggle (if any remains)
+    const focusItem = document.getElementById('scf-focus-toggle');
+    if (focusItem) focusItem.remove();
+
+    // Remove Focus Class
+    document.body.classList.remove('scf-focus-enabled');
+
+    // Disconnect Observers
+    observers.forEach(obs => obs.disconnect());
+    observers = [];
+
+    // Show original My Courses if hidden
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+      if (item.style.display === 'none') item.style.display = '';
+    });
+  };
+
+  const init = async () => {
+    const data = await chrome.storage.local.get([STORAGE_KEYS.EXTENSION_ENABLED, STORAGE_KEYS.AUTO_LOGIN, STORAGE_KEYS.FOCUS_MODE]);
+
+    // Default to true if not set
+    if (data[STORAGE_KEYS.EXTENSION_ENABLED] === false) {
+      teardown();
+      return;
+    }
+
+    console.log('SLIIT Filter: Enabling extension...');
+
+    // 1. Navbar Item
+    injectNavbarItem();
+    const navObserver = new MutationObserver(() => {
+      if (document.querySelector('nav') && !document.getElementById('scf-navbar-item')) {
+        injectNavbarItem();
+      }
+    });
+    navObserver.observe(document.body, { childList: true, subtree: true });
+    observers.push(navObserver);
+
+    // 2. Hide Original "My Courses"
+    hideOriginalMyCourses();
+    const hideObserver = new MutationObserver(hideOriginalMyCourses);
+    hideObserver.observe(document.body, { childList: true, subtree: true });
+    observers.push(hideObserver);
+
+    // 3. Auto Login
+    // Only run if master switch is ON
+    if (data[STORAGE_KEYS.AUTO_LOGIN]) {
+      checkAndAutoLogin();
+    }
+
+    // 4. Focus Mode
+    updateFocusMode(data[STORAGE_KEYS.FOCUS_MODE] || false);
+
+    // 5. Drawer Closer
+    setTimeout(closeRightDrawer, 500);
+    setTimeout(closeRightDrawer, 1500);
+    setTimeout(closeRightDrawer, 3000);
+  };
+
+  // Run immediately
+  init();
+
+  // Listen for changes
   chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local') {
-      if (changes[STORAGE_KEYS.FOCUS_MODE]) {
-        updateFocusMode(changes[STORAGE_KEYS.FOCUS_MODE].newValue);
+      // Master Switch Change
+      if (changes[STORAGE_KEYS.EXTENSION_ENABLED]) {
+        if (changes[STORAGE_KEYS.EXTENSION_ENABLED].newValue === false) {
+          teardown();
+        } else {
+          init();
+        }
       }
-      // Note: Auto Login changes don't need immediate reaction on this page, 
-      // they apply on next reload/visit to landing page.
+
+      // Focus Mode Change (only if enabled)
+      if (changes[STORAGE_KEYS.FOCUS_MODE]) {
+        chrome.storage.local.get(STORAGE_KEYS.EXTENSION_ENABLED, (res) => {
+          if (res[STORAGE_KEYS.EXTENSION_ENABLED] !== false) {
+            updateFocusMode(changes[STORAGE_KEYS.FOCUS_MODE].newValue);
+          }
+        });
+      }
     }
   });
 
