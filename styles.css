@@ -351,9 +351,19 @@
 }
 
 /* --- Focus Mode Styles --- */
-/* Hide all navbar items except ours (Semester Dropdown + Focus Toggle) */
+/* Hide navbar items specifically in the main header/nav areas */
+/* Target Standard Moodle Primary Nav */
 body.scf-focus-enabled .primary-navigation .nav-item:not(#scf-navbar-item),
 body.scf-focus-enabled .more-nav>li:not(#scf-navbar-item),
-body.scf-focus-enabled .navbar-nav>li:not(#scf-navbar-item) {
+/* Target Top Fixed Navbar (common in themes) */
+body.scf-focus-enabled nav.fixed-top .nav-item:not(#scf-navbar-item),
+body.scf-focus-enabled nav.navbar-fixed-top .nav-item:not(#scf-navbar-item),
+/* Target Header Nav (if distinct) */
+body.scf-focus-enabled header .navbar-nav>li:not(#scf-navbar-item) {
   display: none !important;
+}
+
+/* Ensure we don't accidentally hide our own item if it matches above */
+body.scf-focus-enabled #scf-navbar-item {
+  display: flex !important;
 }
